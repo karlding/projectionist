@@ -11,6 +11,7 @@ import {
 } from './displayPages';
 import { useSongLoader } from './useSongLoader';
 import { SongHeader } from './components/SongHeader';
+import { InitialLoadPage } from './components/InitialLoadPage';
 import { VerseIndicator } from './components/VerseIndicator';
 import { LyricsPageContent } from './components/LyricsPageContent';
 
@@ -98,6 +99,13 @@ function Homepage() {
   const currentPageLines = Array.isArray(displayPages[currentPage])
     ? displayPages[currentPage]
     : [];
+
+  const hasSongData = Boolean(titleLine);
+  if (!hasSongData) {
+    return (
+      <InitialLoadPage loading={loading} error={error ?? undefined} />
+    );
+  }
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-white">
