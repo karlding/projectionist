@@ -2,6 +2,7 @@ import type { Database } from './Model';
 
 export interface SongTitleRow {
   TitleName: string;
+  LanguageSkid: number;
 }
 
 export interface SentenceRow {
@@ -34,10 +35,13 @@ function bindParams(sourceSkid: number, sourceSequenceNbr: number): [string, str
 /** Section: section[sentenceIndex][langIndex] = line text. */
 export type Section = string[][];
 
+/** Title text keyed by language skid. */
+export type TitleByLanguageSkid = Record<number, string>;
+
 export interface SongData {
   sourceSkid: number;
   sourceSequenceNbr: number;
-  title: string[];
+  titleByLanguageSkid: TitleByLanguageSkid;
   sections: Section[];
   isChorus: boolean[];
   languageSkid: number[];
@@ -86,7 +90,7 @@ function languageOrder(items: { seq: number; lang: number; content: string }[]):
 }
 
 const TITLE_SQL = `
-  SELECT Song.TitleName
+  SELECT Song.TitleName, Song.LanguageSkid
   FROM Song
   INNER JOIN SourceSong ON (
     SourceSong.SongSkid = Song.SongSkid
@@ -213,7 +217,12 @@ export function createQueries(db: Database) {
     getSongData(sourceSkid: number, sourceSequenceNbr: number): SongData {
       const [a, b] = bindParams(sourceSkid, sourceSequenceNbr);
       const titleRows = titleStmt.all(a, b) as unknown as SongTitleRow[];
-      const title = titleRows.map((r) => r.TitleName).filter(Boolean);
+      const titleByLanguageSkid: TitleByLanguageSkid = {};
+      for (const r of titleRows) {
+        if (r.TitleName != null && r.TitleName !== '') {
+          titleByLanguageSkid[r.LanguageSkid] = r.TitleName;
+        }
+      }
 
       const rows = stanzasStmt.all(a, b) as unknown as StanzaSentenceRow[];
       const byStanza = new Map<number, { seq: number; lang: number; content: string }[]>();
@@ -269,7 +278,7 @@ export function createQueries(db: Database) {
       return {
         sourceSkid,
         sourceSequenceNbr,
-        title,
+        titleByLanguageSkid,
         sections,
         isChorus,
         languageSkid,

@@ -27,7 +27,7 @@ function Homepage() {
   const isChorusRef = React.useRef<boolean[]>([]);
 
   const {
-    title,
+    titleLine,
     stanzas,
     isChorus,
     languageCount,
@@ -101,14 +101,23 @@ function Homepage() {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-white">
-      <SongHeader title={title} sourceSequenceNbr={sourceSequenceNbr} />
+      <SongHeader titleLine={titleLine} sourceSequenceNbr={sourceSequenceNbr} />
       <div
         className={`flex-1 min-h-0 overflow-hidden pt-6 flex ${
           showTwoColumns ? 'flex-row' : 'flex-col'
         }`}
       >
         {showTwoColumns && (
-          <VerseIndicator currentVerse={currentVerse} totalVerses={totalVerses} />
+          <VerseIndicator
+            currentVerse={currentVerse}
+            totalVerses={totalVerses}
+            hasChorus={isChorus.some(Boolean)}
+            isChorus={
+              stanzaIndexByPage[currentPage] !== undefined
+                ? isChorus[stanzaIndexByPage[currentPage]]
+                : false
+            }
+          />
         )}
         <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
           {loading ? (

@@ -4,7 +4,7 @@
 
 import type { SongData as SongDataFromQueries } from './Queries';
 
-export type { SongData } from './Queries';
+export type { SongData, TitleByLanguageSkid } from './Queries';
 
 export interface SongQueries {
   getSongData(sourceSkid: number, sourceSequenceNbr: number): SongDataFromQueries;
@@ -18,9 +18,8 @@ function sectionsToStanzas(sections: SongDataFromQueries['sections']): string[][
 export class Song {
   readonly sourceSkid: number;
   readonly sourceSequenceNbr: number;
-  // Song title
-  // each array element is a different language
-  readonly title: string[];
+  /** Title text keyed by language skid. */
+  readonly titleByLanguageSkid: SongDataFromQueries['titleByLanguageSkid'];
   readonly stanzas: string[][];
   readonly isChorus: boolean[];
   readonly languageSkid: number[];
@@ -29,11 +28,20 @@ export class Song {
   constructor(data: SongDataFromQueries) {
     this.sourceSkid = data.sourceSkid;
     this.sourceSequenceNbr = data.sourceSequenceNbr;
-    this.title = data.title ?? [];
+    this.titleByLanguageSkid = data.titleByLanguageSkid ?? {};
     this.isChorus = data.isChorus ?? [];
     this.languageSkid = data.languageSkid ?? [];
     this.languageCount = Math.max(1, this.languageSkid.length);
     this.stanzas = sectionsToStanzas(data.sections ?? []);
+  }
+
+  /** Title for a given language skid, or fallback to first language, or empty string. */
+  getTitle(languageSkid: number): string {
+    return (
+      this.titleByLanguageSkid[languageSkid] ??
+      (this.languageSkid.length > 0 ? this.titleByLanguageSkid[this.languageSkid[0]] : undefined) ??
+      ''
+    );
   }
 
   /** Build a Song by calling the query helpers (sync; use in main process). */
@@ -51,13 +59,16 @@ export class Song {
     return new Song(data);
   }
 
-  /** Display title: first title or empty string. */
+  /** Display title: first language in order, or empty string. */
   get displayTitle(): string {
-    return this.title.length > 0 ? this.title[0] : '';
+    return this.languageSkid.length > 0 ? this.getTitle(this.languageSkid[0]) : '';
   }
 
-  /** All titles joined (e.g. for bilingual header). */
+  /** All titles in language order joined (e.g. for bilingual header). */
   get titleLine(): string {
-    return this.title.filter(Boolean).join(' / ');
+    return this.languageSkid
+      .map((skid) => this.titleByLanguageSkid[skid])
+      .filter(Boolean)
+      .join(' / ');
   }
 }
