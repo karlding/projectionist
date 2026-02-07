@@ -61,6 +61,8 @@ function Homepage() {
   const [lyricsFontSizeIndex, setLyricsFontSizeIndex] = React.useState(DEFAULT_LYRICS_FONT_SIZE_INDEX);
   const digitBufferRef = React.useRef('');
   const lyricsScrollRef = React.useRef<HTMLDivElement>(null);
+  const stanzaIndexByPageRef = React.useRef<number[]>([]);
+  const isChorusRef = React.useRef<boolean[]>([]);
 
   const { pages: displayPages, stanzaIndexByPage } = React.useMemo(
     () => buildDisplayPages(stanzas, languageCount),
@@ -71,6 +73,8 @@ function Homepage() {
   totalPagesRef.current = totalPages;
   const currentPageRef = React.useRef(currentPage);
   currentPageRef.current = currentPage;
+  stanzaIndexByPageRef.current = stanzaIndexByPage;
+  isChorusRef.current = isChorus;
 
   const totalVerses = isChorus.filter((c) => !c).length || 1;
   const currentVerse =
@@ -123,6 +127,33 @@ function Homepage() {
       if (nav) {
         setCurrentPage(nav.page);
         e.preventDefault();
+      }
+
+      // Press 0 to jump to the chorus of the current verse
+      if (e.key === '0') {
+        const byPage = stanzaIndexByPageRef.current;
+        const chorusFlags = isChorusRef.current;
+        const page = currentPageRef.current;
+        if (byPage.length > 0 && page < byPage.length && chorusFlags.length > 0) {
+          const currentStanzaIdx = byPage[page];
+          if (!chorusFlags[currentStanzaIdx]) {
+            // In a verse: find next chorus stanza
+            let chorusStanzaIdx = -1;
+            for (let i = currentStanzaIdx + 1; i < chorusFlags.length; i++) {
+              if (chorusFlags[i]) {
+                chorusStanzaIdx = i;
+                break;
+              }
+            }
+            if (chorusStanzaIdx >= 0) {
+              const chorusPage = byPage.findIndex((s) => s === chorusStanzaIdx);
+              if (chorusPage >= 0) {
+                setCurrentPage(chorusPage);
+                e.preventDefault();
+              }
+            }
+          }
+        }
       }
 
       if (e.key === '=' || e.key === '+') {
