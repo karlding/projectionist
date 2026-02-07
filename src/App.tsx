@@ -1,5 +1,11 @@
 import * as React from 'react';
-import { MemoryRouter as Router, Routes, Route } from 'react-router';
+import {
+  MemoryRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+  useParams,
+} from 'react-router';
 import { useMachine } from '@xstate/react';
 import { keyboardMachine, clampLyricsFontSizeIndex } from './keyboardMachine';
 import {
@@ -16,9 +22,32 @@ import { VerseIndicator } from './components/VerseIndicator';
 import { LyricsPageContent } from './components/LyricsPageContent';
 
 const sourceSkid = 1;
+const DEFAULT_SOURCE_SEQUENCE_NBR = 294;
 
-function Homepage() {
-  const [sourceSequenceNbr, setSourceSequenceNbr] = React.useState(294);
+function InitialLoadRoute() {
+  const navigate = useNavigate();
+  const { loading, error, loadSong } = useSongLoader(sourceSkid);
+  const sourceSequenceNbr = DEFAULT_SOURCE_SEQUENCE_NBR;
+
+  React.useEffect(() => {
+    loadSong(sourceSequenceNbr).then(() => {
+      navigate(`/song/${sourceSequenceNbr}`, { replace: true });
+    });
+  }, [loadSong, sourceSequenceNbr, navigate]);
+
+  return (
+    <InitialLoadPage loading={loading} error={error ?? undefined} />
+  );
+}
+
+function SongView() {
+  const { sourceSequenceNbr: param } = useParams<{ sourceSequenceNbr: string }>();
+  const sourceSequenceNbr = Math.max(
+    0,
+    parseInt(param ?? String(DEFAULT_SOURCE_SEQUENCE_NBR), 10) || DEFAULT_SOURCE_SEQUENCE_NBR
+  );
+  const navigate = useNavigate();
+
   const [currentPage, setCurrentPage] = React.useState(0);
   const [lyricsFontSizeIndex, setLyricsFontSizeIndex] = React.useState(
     DEFAULT_LYRICS_FONT_SIZE_INDEX
@@ -42,7 +71,7 @@ function Homepage() {
       onNavigate: setCurrentPage,
       onFontSizeDelta: (delta) =>
         setLyricsFontSizeIndex((i) => clampLyricsFontSizeIndex(i + delta)),
-      onLoadSong: setSourceSequenceNbr,
+      onLoadSong: (n) => navigate(`/song/${n}`),
     },
   });
 
@@ -101,15 +130,19 @@ function Homepage() {
     : [];
 
   const hasSongData = Boolean(titleLine);
-  if (!hasSongData) {
-    return (
-      <InitialLoadPage loading={loading} error={error ?? undefined} />
-    );
-  }
+  const header = hasSongData ? (
+    <SongHeader titleLine={titleLine} sourceSequenceNbr={sourceSequenceNbr} />
+  ) : (
+    <header className="flex-shrink-0 sticky top-0 z-10 px-8 pt-6 pb-4 border-b border-gray-200 bg-white">
+      <h1 className="text-2xl font-semibold text-center text-gray-500">
+        {sourceSequenceNbr}: Loading…
+      </h1>
+    </header>
+  );
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-white">
-      <SongHeader titleLine={titleLine} sourceSequenceNbr={sourceSequenceNbr} />
+      {header}
       <div
         className={`flex-1 min-h-0 overflow-hidden pt-6 flex ${
           showTwoColumns ? 'flex-row' : 'flex-col'
@@ -160,7 +193,8 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Homepage />} />
+        <Route path="/" element={<InitialLoadRoute />} />
+        <Route path="/song/:sourceSequenceNbr" element={<SongView />} />
       </Routes>
     </Router>
   );
