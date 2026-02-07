@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router';
+import { handleKeyDown, handleKeyUp } from './songNumberInput';
 
 const sourceSkid = 1;
 const languageSkid = 1;
@@ -35,24 +36,14 @@ function Homepage() {
 
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Control') {
-        digitBufferRef.current = '';
-        return;
-      }
-      if (e.ctrlKey && /^[0-9]$/.test(e.key)) {
-        digitBufferRef.current += e.key;
-        e.preventDefault();
-      }
+      const result = handleKeyDown(e.key, e.ctrlKey, digitBufferRef.current);
+      digitBufferRef.current = result.buffer;
+      if (result.preventDefault) e.preventDefault();
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Control') {
-        const buf = digitBufferRef.current;
-        digitBufferRef.current = '';
-        if (buf.length > 0) {
-          const n = parseInt(buf, 10);
-          if (!Number.isNaN(n)) setSourceSequenceNbr(n);
-        }
-      }
+      const result = handleKeyUp(e.key, digitBufferRef.current);
+      digitBufferRef.current = result.buffer;
+      if (result.sequenceNbr !== null) setSourceSequenceNbr(result.sequenceNbr);
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
