@@ -10,7 +10,7 @@ function clampPage(page: number, total: number): number {
   return Math.max(0, Math.min(page, total - 1));
 }
 
-/** Normalize API response to stanzas (string[][]). Handles legacy flat string[]. */
+/** Normalize stanzas array (handles legacy flat string[] from older API if needed). */
 function normalizeStanzas(s: string[] | string[][] | null | undefined): string[][] {
   if (!s || !Array.isArray(s)) return [];
   if (s.length === 0) return [];
@@ -51,14 +51,16 @@ function Homepage() {
       window.api.getStanzas(sourceSkid, sequenceNbr, languageSkid),
     ])
       .then(([t, s]) => {
+        console.log('[loadSong] getStanzas response:', s, 'stanzas?.length:', (s as { stanzas?: unknown[] })?.stanzas?.length);
         setTitle(t);
-        const payload = s as { stanzas?: string[][] } | string[][];
-        const stanzasList = Array.isArray(payload)
-          ? normalizeStanzas(payload)
-          : normalizeStanzas(payload.stanzas);
+        const stanzasList = normalizeStanzas((s as { stanzas?: string[][] }).stanzas);
+        console.log('[loadSong] stanzasList.length:', stanzasList.length, 'first:', stanzasList[0]?.[0]?.slice(0, 50));
         setStanzas(stanzasList);
-        const chorusFlags = Array.isArray(payload) ? stanzasList.map(() => false) : (payload as { isChorus?: boolean[] }).isChorus;
-        setIsChorus(Array.isArray(chorusFlags) && chorusFlags.length === stanzasList.length ? chorusFlags : stanzasList.map(() => false));
+        const chorusFlags =
+          Array.isArray(s.isChorus) && s.isChorus.length === stanzasList.length
+            ? s.isChorus
+            : stanzasList.map(() => false);
+        setIsChorus(chorusFlags);
         setCurrentPage(0);
       })
       .catch((err: Error) => {
