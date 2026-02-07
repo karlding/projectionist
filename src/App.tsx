@@ -33,14 +33,13 @@ function Homepage() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-4">Projectionist</h1>
+      <h1 className="text-2xl font-semibold mb-4">{title ?? 'Projectionist'}</h1>
       {loading ? (
         <p>Loading…</p>
       ) : error ? (
         <p className="text-red-600">{error}</p>
       ) : (
         <>
-          {title && <h2 className="text-xl mb-2">{title}</h2>}
           {stanzas.length > 0 ? (
             <div className="space-y-2 text-gray-700">
               {stanzas.map((content, i) => (
