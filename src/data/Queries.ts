@@ -12,6 +12,8 @@ export interface StanzaSentenceRow {
   StanzaNbr: number;
   Content: string;
   IsChorus?: number; /* 0 or 1 from SQLite */
+  SentenceSequenceNbr?: number;
+  LanguageSkid?: number;
 }
 
 /** Ensure value is a safe integer for inlining in SQL (no injection). */
@@ -21,12 +23,21 @@ function safeInt(n: number): number {
   return i;
 }
 
-/** Single language for now (schema has LanguageSkid on all tables). */
-const LANGUAGE_SKID = 1;
+/** Title uses first language only. */
+const TITLE_LANGUAGE_SKID = 1;
 
 /** Bind (sourceSkid, sourceSequenceNbr) for queries. Pass as strings so node:sqlite matches TEXT (e.g. SourceSequenceNbr) and INTEGER columns. */
 function bindParams(sourceSkid: number, sourceSequenceNbr: number): [string, string] {
   return [String(safeInt(sourceSkid)), String(safeInt(sourceSequenceNbr))];
+}
+
+/** Order lines by sentence index then language: lang1 line1, lang2 line1, lang1 line2, lang2 line2, ... */
+function interleaveBySentenceThenLanguage(
+  items: { seq: number; lang: number; content: string }[]
+): string[] {
+  return [...items]
+    .sort((a, b) => a.seq - b.seq || a.lang - b.lang)
+    .map((x) => x.content);
 }
 
 const TITLE_SQL = `
@@ -38,18 +49,20 @@ const TITLE_SQL = `
   )
   INNER JOIN Source ON (
     Source.SourceSkid = SourceSong.SourceSkid
-    AND Source.LanguageSkid = Song.LanguageSkid
+    AND Source.LanguageSkid = SourceSong.LanguageSkid
   )
   WHERE (
     Source.SourceSkid = ?
     AND SourceSong.SourceSequenceNbr = ?
-    AND Song.LanguageSkid = ${LANGUAGE_SKID}
   )
+  ORDER BY Song.LanguageSkid
 `;
 
 const STANZAS_SQL = `
   SELECT Stanza.StanzaSequenceNbr AS StanzaNbr, Sentence.Content,
-    (Stanza.ChorusSkid IS NOT NULL) AS IsChorus
+    (Stanza.ChorusSkid IS NOT NULL) AS IsChorus,
+    StanzaSentence.SentenceSequenceNbr AS SentenceSequenceNbr,
+    Stanza.LanguageSkid AS LanguageSkid
   FROM Sentence
   INNER JOIN StanzaSentence ON (
     StanzaSentence.SentenceSkid = Sentence.SentenceSkid
@@ -70,9 +83,8 @@ const STANZAS_SQL = `
   WHERE (
     Source.SourceSkid = ?
     AND SourceSong.SourceSequenceNbr = ?
-    AND Stanza.LanguageSkid = ${LANGUAGE_SKID}
   )
-  ORDER BY Stanza.StanzaSequenceNbr
+  ORDER BY Stanza.StanzaSequenceNbr, StanzaSentence.SentenceSequenceNbr, Stanza.LanguageSkid
 `;
 
 const CHORUS_SQL = `
@@ -80,7 +92,7 @@ const CHORUS_SQL = `
   FROM Sentence
   INNER JOIN ChorusSentence ON (
     ChorusSentence.SentenceSkid = Sentence.SentenceSkid
-    AND ChorusSentence.LanguageSkid = ${LANGUAGE_SKID}
+    AND ChorusSentence.LanguageSkid = ${TITLE_LANGUAGE_SKID}
   )
   INNER JOIN Chorus ON (
     Chorus.ChorusSkid = ChorusSentence.ChorusSkid
@@ -101,17 +113,18 @@ const CHORUS_SQL = `
   WHERE (
     Source.SourceSkid = ?
     AND SourceSong.SourceSequenceNbr = ?
-    AND Stanza.LanguageSkid = ${LANGUAGE_SKID}
+    AND Stanza.LanguageSkid = ${TITLE_LANGUAGE_SKID}
   )
 `;
 
-/** Chorus sentences with stanza position; all lines per slot, single language. Do not join StanzaSequenceNbr = SentenceSequenceNbr so we get every line of the chorus for each slot. */
+/** Chorus sentences with stanza position; all languages, interleaved by sentence index (lang1 line1, lang2 line1, lang1 line2, ...). */
 const CHORUS_SENTENCES_SQL = `
-  SELECT Stanza.StanzaSequenceNbr AS StanzaNbr, Sentence.Content
+  SELECT Stanza.StanzaSequenceNbr AS StanzaNbr, Sentence.Content,
+    ChorusSentence.SentenceSequenceNbr AS SentenceSequenceNbr,
+    ChorusSentence.LanguageSkid AS LanguageSkid
   FROM Sentence
   INNER JOIN ChorusSentence ON (
     ChorusSentence.SentenceSkid = Sentence.SentenceSkid
-    AND ChorusSentence.LanguageSkid = ${LANGUAGE_SKID}
   )
   INNER JOIN Chorus ON (
     Chorus.ChorusSkid = ChorusSentence.ChorusSkid
@@ -119,7 +132,7 @@ const CHORUS_SENTENCES_SQL = `
   )
   INNER JOIN Stanza ON (
     Stanza.ChorusSkid = Chorus.ChorusSkid
-    AND Stanza.LanguageSkid = ${LANGUAGE_SKID}
+    AND Stanza.LanguageSkid = ChorusSentence.LanguageSkid
   )
   INNER JOIN SourceSong ON (
     SourceSong.SongSkid = Stanza.SongSkid
@@ -133,7 +146,7 @@ const CHORUS_SENTENCES_SQL = `
     Source.SourceSkid = ?
     AND SourceSong.SourceSequenceNbr = ?
   )
-  ORDER BY Stanza.StanzaSequenceNbr, ChorusSentence.SentenceSequenceNbr
+  ORDER BY Stanza.StanzaSequenceNbr, ChorusSentence.SentenceSequenceNbr, ChorusSentence.LanguageSkid
 `;
 
 /**
@@ -152,27 +165,28 @@ export function createQueries(db: Database) {
   }
 
   return {
-    getSongTitle(sourceSkid: number, sourceSequenceNbr: number, _languageSkid: number): string | null {
+    getSongTitle(sourceSkid: number, sourceSequenceNbr: number, _languageSkid: number): string[] {
       const [a, b] = bindParams(sourceSkid, sourceSequenceNbr);
-      const row = titleStmt.get(a, b) as unknown as SongTitleRow | undefined;
-      return row?.TitleName ?? null;
+      const rows = titleStmt.all(a, b) as unknown as SongTitleRow[];
+      return rows.map((r) => r.TitleName).filter(Boolean);
     },
     /** Returns stanzas and per-stanza isChorus (verse vs chorus). Verse from StanzaSentence; chorus from ChorusSentence when present. Many songs have no chorus. */
     getStanzas(sourceSkid: number, sourceSequenceNbr: number, _languageSkid: number): { stanzas: string[][]; isChorus: boolean[] } {
       const [a, b] = bindParams(sourceSkid, sourceSequenceNbr);
       const rows = stanzasStmt.all(a, b) as unknown as StanzaSentenceRow[];
-      console.log('[getStanzas] verse rows:', rows.length, rows[0] ? { keys: Object.keys(rows[0]), first: rows[0] } : null);
-      const byStanza = new Map<number, string[]>();
+      const byStanza = new Map<number, { seq: number; lang: number; content: string }[]>();
       const chorusByStanza = new Map<number, boolean>();
       for (const r of rows) {
         const row = r as StanzaSentenceRow & Record<string, unknown>;
         const n = Number(row.StanzaNbr ?? row['Stanza.StanzaSequenceNbr'] ?? row.StanzaSequenceNbr);
         if (!Number.isFinite(n)) continue;
+        const seq = Number(row.SentenceSequenceNbr ?? row['StanzaSentence.SentenceSequenceNbr'] ?? 0);
+        const lang = Number(row.LanguageSkid ?? row['Stanza.LanguageSkid'] ?? 0);
         if (!byStanza.has(n)) {
           byStanza.set(n, []);
           chorusByStanza.set(n, Number(row.IsChorus) === 1);
         }
-        byStanza.get(n)!.push(r.Content);
+        byStanza.get(n)!.push({ seq, lang, content: r.Content });
       }
       let chorusRows: StanzaSentenceRow[] = [];
       if (chorusSentencesStmt) {
@@ -182,30 +196,31 @@ export function createQueries(db: Database) {
           // Chorus query failed; verse-only
         }
       }
-      const chorusContentByStanza = new Map<number, string[]>();
+      const chorusContentByStanza = new Map<number, { seq: number; lang: number; content: string }[]>();
       for (const r of chorusRows) {
         const row = r as StanzaSentenceRow & Record<string, unknown>;
         const n = Number(row.StanzaNbr ?? row['Stanza.StanzaSequenceNbr'] ?? row.StanzaSequenceNbr);
         if (!Number.isFinite(n)) continue;
+        const seq = Number(row.SentenceSequenceNbr ?? row['ChorusSentence.SentenceSequenceNbr'] ?? 0);
+        const lang = Number(row.LanguageSkid ?? row['ChorusSentence.LanguageSkid'] ?? 0);
         if (!chorusContentByStanza.has(n)) chorusContentByStanza.set(n, []);
-        chorusContentByStanza.get(n)!.push(r.Content);
+        chorusContentByStanza.get(n)!.push({ seq, lang, content: r.Content });
       }
       const allStanzaNbrs = [...new Set([...byStanza.keys(), ...chorusContentByStanza.keys()])].sort((x, y) => x - y);
       const stanzas: string[][] = [];
       const isChorus: boolean[] = [];
       for (const n of allStanzaNbrs) {
-        const verseLines = byStanza.get(n);
-        const chorusLines = chorusContentByStanza.get(n);
-        if (verseLines?.length) {
-          stanzas.push(verseLines);
+        const verseItems = byStanza.get(n);
+        const chorusItems = chorusContentByStanza.get(n);
+        if (verseItems?.length) {
+          stanzas.push(interleaveBySentenceThenLanguage(verseItems));
           isChorus.push(false);
         }
-        if (chorusLines?.length) {
-          stanzas.push(chorusLines);
+        if (chorusItems?.length) {
+          stanzas.push(interleaveBySentenceThenLanguage(chorusItems));
           isChorus.push(true);
         }
       }
-      console.log('[getStanzas] result:', { stanzaCount: stanzas.length, isChorusLength: isChorus.length, firstStanzaPreview: stanzas[0]?.[0]?.slice(0, 50) });
       return { stanzas, isChorus };
     },
     getChorus(sourceSkid: number, sourceSequenceNbr: number, _languageSkid: number): string | null {

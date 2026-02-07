@@ -1,5 +1,5 @@
 export interface RendererDbApi {
-  getSongTitle: (sourceSkid: number, sourceSequenceNbr: number, languageSkid: number) => Promise<string | null>;
+  getSongTitle: (sourceSkid: number, sourceSequenceNbr: number, languageSkid: number) => Promise<string[]>;
   getStanzas: (sourceSkid: number, sourceSequenceNbr: number, languageSkid: number) => Promise<{ stanzas: string[][]; isChorus: boolean[] }>;
   getChorus: (sourceSkid: number, sourceSequenceNbr: number, languageSkid: number) => Promise<string | null>;
 }

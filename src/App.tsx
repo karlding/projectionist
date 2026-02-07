@@ -21,7 +21,7 @@ function normalizeStanzas(s: string[] | string[][] | null | undefined): string[]
 
 function Homepage() {
   const [sourceSequenceNbr, setSourceSequenceNbr] = React.useState(294);
-  const [title, setTitle] = React.useState<string | null>(null);
+  const [title, setTitle] = React.useState<string[]>([]);
   const [stanzas, setStanzas] = React.useState<string[][]>([]);
   const [isChorus, setIsChorus] = React.useState<boolean[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -105,7 +105,9 @@ function Homepage() {
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-white">
       <header className="flex-shrink-0 sticky top-0 z-10 flex items-baseline justify-between gap-4 px-8 pt-6 pb-4 border-b border-gray-200 bg-white">
-        <h1 className="text-2xl font-semibold">{title ?? 'Projectionist'}</h1>
+        <h1 className="text-2xl font-semibold">
+          {title.length > 0 ? title.join(' / ') : 'Projectionist'}
+        </h1>
         {!loading && !error && stanzas.length > 0 && totalVerses > 0 && (
           <span className="text-gray-500 text-sm tabular-nums">{currentVerse} / {totalVerses}</span>
         )}
