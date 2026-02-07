@@ -3,7 +3,7 @@
  * page/verse navigation, chorus jump (0), lyrics font size (+/-), and lyrics scroll (arrows).
  */
 
-import { setup, assign } from 'xstate';
+import { setup, assign, enqueueActions } from 'xstate';
 import { getPageNavigation, handleKeyDown, handleKeyUp } from './songNumberInput';
 
 const LYRICS_FONT_SIZES_LENGTH = 6;
@@ -60,7 +60,7 @@ export const keyboardMachine = keyboardSetup.createMachine({
     listening: {
       on: {
         KEY_DOWN: {
-          actions: keyboardSetup.enqueueActions(({ context, event, enqueue }) => {
+          actions: enqueueActions(({ context, event, enqueue }) => {
             if (event.type !== 'KEY_DOWN') return;
             const { key, ctrlKey, domEvent, totalPages, currentPage, stanzaIndexByPage, isChorus, lyricsScrollEl } = event;
             const result = handleKeyDown(key, ctrlKey, context.digitBuffer);
