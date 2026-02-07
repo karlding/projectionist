@@ -5,10 +5,6 @@ export interface SongTitleRow {
   LanguageSkid: number;
 }
 
-export interface SentenceRow {
-  Content: string;
-}
-
 export interface StanzaSentenceRow {
   StanzaNbr: number;
   Content: string;
@@ -23,9 +19,6 @@ function safeInt(n: number): number {
   if (!Number.isSafeInteger(i)) throw new Error('Invalid integer parameter');
   return i;
 }
-
-/** Title uses first language only. */
-const TITLE_LANGUAGE_SKID = 1;
 
 /** Bind (sourceSkid, sourceSequenceNbr) for queries. Both are INTEGER in the schema. */
 function bindParams(sourceSkid: number, sourceSequenceNbr: number): [number, number] {
@@ -47,16 +40,7 @@ export interface SongData {
   languageSkid: number[];
 }
 
-/** Order lines by sentence index then language: lang1 line1, lang2 line1, lang1 line2, lang2 line2, ... */
-function interleaveBySentenceThenLanguage(
-  items: { seq: number; lang: number; content: string }[]
-): string[] {
-  return [...items]
-    .sort((a, b) => a.seq - b.seq || a.lang - b.lang)
-    .map((x) => x.content);
-}
-
-/** Build section as sentence x lang matrix from ordered items (seq, lang, content). Returns { section, languageSkid } with lang order. */
+/** Build section as sentence x lang matrix from ordered items (seq, lang, content). */
 function buildSection(
   items: { seq: number; lang: number; content: string }[],
   langOrder: number[]
@@ -87,6 +71,22 @@ function languageOrder(items: { seq: number; lang: number; content: string }[]):
     }
   }
   return order;
+}
+
+type LineItem = { seq: number; lang: number; content: string };
+
+/** Parse stanza/chorus row into stanza number and line item. Returns null if stanza nbr invalid. */
+function parseStanzaLine(
+  row: Record<string, unknown>,
+  content: string,
+  seqKey: string,
+  langKey: string
+): { n: number; item: LineItem } | null {
+  const n = Number(row.StanzaNbr ?? row['Stanza.StanzaSequenceNbr'] ?? row.StanzaSequenceNbr);
+  if (!Number.isFinite(n)) return null;
+  const seq = Number(row.SentenceSequenceNbr ?? row[seqKey] ?? 0);
+  const lang = Number(row.LanguageSkid ?? row[langKey] ?? 0);
+  return { n, item: { seq, lang, content } };
 }
 
 const TITLE_SQL = `
@@ -136,37 +136,7 @@ const STANZAS_SQL = `
   ORDER BY Stanza.StanzaSequenceNbr, StanzaSentence.SentenceSequenceNbr, Stanza.LanguageSkid
 `;
 
-const CHORUS_SQL = `
-  SELECT Sentence.Content
-  FROM Sentence
-  INNER JOIN ChorusSentence ON (
-    ChorusSentence.SentenceSkid = Sentence.SentenceSkid
-    AND ChorusSentence.LanguageSkid = ${TITLE_LANGUAGE_SKID}
-  )
-  INNER JOIN Chorus ON (
-    Chorus.ChorusSkid = ChorusSentence.ChorusSkid
-    AND Chorus.LanguageSkid = ChorusSentence.LanguageSkid
-  )
-  INNER JOIN Stanza ON (
-    Stanza.ChorusSkid = Chorus.ChorusSkid
-    AND Stanza.StanzaSequenceNbr = ChorusSentence.SentenceSequenceNbr
-  )
-  INNER JOIN SourceSong ON (
-    SourceSong.SongSkid = Stanza.SongSkid
-    AND SourceSong.LanguageSkid = Stanza.LanguageSkid
-  )
-  INNER JOIN Source ON (
-    Source.SourceSkid = SourceSong.SourceSkid
-    AND Source.LanguageSkid = SourceSong.LanguageSkid
-  )
-  WHERE (
-    Source.SourceSkid = ?
-    AND SourceSong.SourceSequenceNbr = ?
-    AND Stanza.LanguageSkid = ${TITLE_LANGUAGE_SKID}
-  )
-`;
-
-/** Chorus sentences with stanza position; all languages, interleaved by sentence index (lang1 line1, lang2 line1, lang1 line2, ...). */
+/** Chorus sentences with stanza position; all languages. */
 const CHORUS_SENTENCES_SQL = `
   SELECT Stanza.StanzaSequenceNbr AS StanzaNbr, Sentence.Content,
     ChorusSentence.SentenceSequenceNbr AS SentenceSequenceNbr,
@@ -205,7 +175,6 @@ const CHORUS_SENTENCES_SQL = `
 export function createQueries(db: Database) {
   const titleStmt = db.prepare(TITLE_SQL);
   const stanzasStmt = db.prepare(STANZAS_SQL);
-  const chorusStmt = db.prepare(CHORUS_SQL);
   let chorusSentencesStmt: ReturnType<Database['prepare']> | null = null;
   try {
     chorusSentencesStmt = db.prepare(CHORUS_SENTENCES_SQL);
@@ -225,19 +194,18 @@ export function createQueries(db: Database) {
       }
 
       const rows = stanzasStmt.all(a, b) as unknown as StanzaSentenceRow[];
-      const byStanza = new Map<number, { seq: number; lang: number; content: string }[]>();
+      const byStanza = new Map<number, LineItem[]>();
       const chorusByStanza = new Map<number, boolean>();
       for (const r of rows) {
         const row = r as StanzaSentenceRow & Record<string, unknown>;
-        const n = Number(row.StanzaNbr ?? row['Stanza.StanzaSequenceNbr'] ?? row.StanzaSequenceNbr);
-        if (!Number.isFinite(n)) continue;
-        const seq = Number(row.SentenceSequenceNbr ?? row['StanzaSentence.SentenceSequenceNbr'] ?? 0);
-        const lang = Number(row.LanguageSkid ?? row['Stanza.LanguageSkid'] ?? 0);
+        const parsed = parseStanzaLine(row, r.Content, 'StanzaSentence.SentenceSequenceNbr', 'Stanza.LanguageSkid');
+        if (!parsed) continue;
+        const { n, item } = parsed;
         if (!byStanza.has(n)) {
           byStanza.set(n, []);
           chorusByStanza.set(n, Number(row.IsChorus) === 1);
         }
-        byStanza.get(n)!.push({ seq, lang, content: r.Content });
+        byStanza.get(n)!.push(item);
       }
       let chorusRows: StanzaSentenceRow[] = [];
       if (chorusSentencesStmt) {
@@ -247,15 +215,18 @@ export function createQueries(db: Database) {
           // Chorus query failed; verse-only
         }
       }
-      const chorusContentByStanza = new Map<number, { seq: number; lang: number; content: string }[]>();
+      const chorusContentByStanza = new Map<number, LineItem[]>();
       for (const r of chorusRows) {
-        const row = r as StanzaSentenceRow & Record<string, unknown>;
-        const n = Number(row.StanzaNbr ?? row['Stanza.StanzaSequenceNbr'] ?? row.StanzaSequenceNbr);
-        if (!Number.isFinite(n)) continue;
-        const seq = Number(row.SentenceSequenceNbr ?? row['ChorusSentence.SentenceSequenceNbr'] ?? 0);
-        const lang = Number(row.LanguageSkid ?? row['ChorusSentence.LanguageSkid'] ?? 0);
+        const parsed = parseStanzaLine(
+          r as unknown as Record<string, unknown>,
+          r.Content,
+          'ChorusSentence.SentenceSequenceNbr',
+          'ChorusSentence.LanguageSkid'
+        );
+        if (!parsed) continue;
+        const { n, item } = parsed;
         if (!chorusContentByStanza.has(n)) chorusContentByStanza.set(n, []);
-        chorusContentByStanza.get(n)!.push({ seq, lang, content: r.Content });
+        chorusContentByStanza.get(n)!.push(item);
       }
       const allStanzaNbrs = [...new Set([...byStanza.keys(), ...chorusContentByStanza.keys()])].sort((x, y) => x - y);
       const sections: Section[] = [];
