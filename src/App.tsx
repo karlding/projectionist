@@ -170,6 +170,8 @@ function Homepage() {
                   const isLastLine = i === (displayPages[currentPage]?.length ?? 1) - 1;
                   const isLastPageOfStanza = currentPage >= totalPages - 1 || stanzaIndexByPage[currentPage + 1] !== stanzaIdx;
                   const showYellowLine = isVerse && nextStanzaIsChorus && isLastLine && isLastPageOfStanza;
+                  const isEndOfSong = currentPage === totalPages - 1 && isLastLine;
+                  const showVerseEndLine = isVerse && isLastLine && isLastPageOfStanza && !isEndOfSong && !showYellowLine;
                   return (
                     <React.Fragment key={i}>
                       <p className="whitespace-pre-wrap py-0.5">
@@ -177,8 +179,13 @@ function Homepage() {
                       </p>
                       {showYellowLine ? (
                         <hr className="border-0 border-t-2 border-yellow-500 my-3 w-full" />
+                      ) : showVerseEndLine ? (
+                        <hr className="border-0 border-t-2 border-gray-300 my-3 w-full" />
                       ) : (i + 1) % languageCount === 0 && !isLastLine ? (
                         <hr className="border-0 border-t border-gray-200 my-3 w-full" />
+                      ) : null}
+                      {isEndOfSong ? (
+                        <hr className="border-0 border-t-2 border-red-500 my-3 w-full" />
                       ) : null}
                     </React.Fragment>
                   );
@@ -186,7 +193,7 @@ function Homepage() {
               </div>
             </div>
           ) : (
-            <p className="px-8 py-6 text-gray-500">No song found for this number.</p>
+            <p className="px-8 py-6 text-gray-500">no song found for this number.</p>
           )}
         </div>
       </div>
