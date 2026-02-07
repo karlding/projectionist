@@ -151,7 +151,7 @@ function Homepage() {
       {/* Two columns when song loaded: verse indicator (sticky left) | lyrics (majority) — flex so lyrics area has bounded height and can scroll */}
       <div className={`flex-1 min-h-0 overflow-hidden pt-6 flex ${!loading && !error && stanzas.length > 0 && totalVerses > 0 ? 'flex-row' : 'flex-col'}`}>
         {!loading && !error && stanzas.length > 0 && totalVerses > 0 && (
-          <aside className="flex-shrink-0 w-20 border-r border-gray-200 bg-white z-10 px-2 pt-0.5">
+          <aside className="flex-shrink-0 w-14 border-r border-gray-200 bg-white z-10 px-1 pt-0.5">
             <span className="text-gray-500 text-sm tabular-nums text-center block">{currentVerse} / {totalVerses}</span>
           </aside>
         )}
