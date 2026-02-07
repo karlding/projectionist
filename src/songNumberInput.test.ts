@@ -119,35 +119,10 @@ describe('songNumberInput', () => {
       });
     });
 
-    it('digit 1-9 without Ctrl jumps to that verse (1-based)', () => {
-      expect(getPageNavigation('1', false, totalPages, 2)).toEqual({
-        page: 0,
-        preventDefault: true,
-      });
-      expect(getPageNavigation('3', false, totalPages, 0)).toEqual({
-        page: 2,
-        preventDefault: true,
-      });
-      expect(getPageNavigation('5', false, totalPages, 0)).toEqual({
-        page: 4,
-        preventDefault: true,
-      });
-    });
-
-    it('digit 0 without Ctrl jumps to verse 10', () => {
-      expect(getPageNavigation('0', false, 10, 0)).toEqual({
-        page: 9,
-        preventDefault: true,
-      });
-    });
-
-    it('returns null when verse number does not exist', () => {
-      expect(getPageNavigation('6', false, totalPages, 0)).toBeNull();
-      expect(getPageNavigation('9', false, totalPages, 0)).toBeNull();
+    it('returns null for digits (verse jump is handled in keyboard machine)', () => {
+      expect(getPageNavigation('1', false, totalPages, 0)).toBeNull();
+      expect(getPageNavigation('3', false, totalPages, 0)).toBeNull();
       expect(getPageNavigation('0', false, totalPages, 0)).toBeNull();
-    });
-
-    it('does not jump on digit when Ctrl is held', () => {
       expect(getPageNavigation('2', true, totalPages, 0)).toBeNull();
     });
 

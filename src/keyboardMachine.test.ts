@@ -160,13 +160,41 @@ describe('keyboardMachine', () => {
       expect(onNavigate).toHaveBeenCalledWith(1);
     });
 
-    it('calls onNavigate for digit 1–9 without Ctrl (verse jump)', () => {
+    it('calls onNavigate for digit 1–9 without Ctrl (verse jump to first page of that verse)', () => {
       const { actor, onNavigate } = createTestActor();
-      keyDown(actor, '3', false, createMockDomEvent(), {
-        totalPages: 5,
+      // stanzaIndexByPage: [0, 0, 1, 1, 2, 2] → verse 2 = stanza 1, first page is index 2
+      keyDown(actor, '2', false, createMockDomEvent(), {
+        totalPages: 6,
         currentPage: 0,
+        stanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        isChorus: [false, true, false, true, false, true],
       });
-      expect(onNavigate).toHaveBeenCalledWith(2); // verse 3 → page index 2
+      expect(onNavigate).toHaveBeenCalledWith(2); // verse 2 → first page of stanza 1
+      onNavigate.mockClear();
+      // verse 3 = stanza 2, first page is index 4
+      keyDown(actor, '3', false, createMockDomEvent(), {
+        totalPages: 6,
+        currentPage: 0,
+        stanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        isChorus: [false, true, false, true, false, true],
+      });
+      expect(onNavigate).toHaveBeenCalledWith(4); // verse 3 → first page of stanza 2
+    });
+
+    it('verse jump: pressing 2 goes to first page of verse 2, not page index 1 (regression)', () => {
+      // When verse 1 spans multiple pages (e.g. pages 0–1), digit 2 must jump to the first page
+      // of verse 2 (page index 2), not to page index 1. Otherwise "pressing 2" would land on
+      // the second page of verse 1 instead of verse 2.
+      const { actor, onNavigate } = createTestActor();
+      const stanzaIndexByPage = [0, 0, 1, 1, 2, 2]; // verse 1 = pages 0,1; verse 2 = pages 2,3; verse 3 = pages 4,5
+      keyDown(actor, '2', false, createMockDomEvent(), {
+        totalPages: stanzaIndexByPage.length,
+        currentPage: 0,
+        stanzaIndexByPage,
+        isChorus: [false, true, false, true, false, true],
+      });
+      const targetPage = onNavigate.mock.calls[0][0];
+      expect(targetPage).toBe(2); // first page of verse 2 (stanza 1), not 1 (page 2 of verse 1)
     });
 
     it('clamps navigation to valid page range', () => {

@@ -67,10 +67,25 @@ export const keyboardMachine = keyboardSetup.createMachine({
             enqueue.assign({ digitBuffer: result.buffer });
             if (result.preventDefault) domEvent.preventDefault();
 
-            const nav = getPageNavigation(key, ctrlKey, totalPages, currentPage);
-            if (nav) {
-              context.onNavigate(nav.page);
-              domEvent.preventDefault();
+            // Arrow/PageUp/Down: use getPageNavigation. Digit without Ctrl: verse jump to first page of that stanza.
+            const isDigit = /^[0-9]$/.test(key);
+            if (!isDigit) {
+              const nav = getPageNavigation(key, ctrlKey, totalPages, currentPage);
+              if (nav) {
+                context.onNavigate(nav.page);
+                domEvent.preventDefault();
+              }
+            } else if (!ctrlKey && stanzaIndexByPage.length > 0 && isChorus.length > 0) {
+              const verse = key === '0' ? 10 : parseInt(key, 10);
+              const totalStanzas = isChorus.length;
+              if (verse >= 1 && verse <= totalStanzas) {
+                const stanzaIdx = verse - 1;
+                const targetPage = stanzaIndexByPage.findIndex((s) => s === stanzaIdx);
+                if (targetPage >= 0) {
+                  context.onNavigate(targetPage);
+                  domEvent.preventDefault();
+                }
+              }
             }
 
             if (key === '0') {

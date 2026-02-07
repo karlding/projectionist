@@ -78,11 +78,6 @@ export function getPageNavigation(
   if (key === 'ArrowLeft' || key === 'PageUp') {
     return { page: clampPage(currentPage - 1, totalPages), preventDefault: true };
   }
-  if (!ctrlKey && DIGIT.test(key)) {
-    const verse = key === '0' ? 10 : parseInt(key, 10);
-    if (verse >= 1 && verse <= totalPages) {
-      return { page: verse - 1, preventDefault: true };
-    }
-  }
+  // Digit-based verse jump is handled in the keyboard machine using stanzaIndexByPage.
   return null;
 }
