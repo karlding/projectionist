@@ -5,11 +5,6 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { openDatabase } from '../data/Model';
 import { createQueries } from '../data/Queries';
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (require('electron-squirrel-startup')) {
-  app.quit();
-}
-
 // Main process: from app/main.js (prod) or dist/main (electron-webpack compile), __dirname is that output dir.
 const preloadScript = path.join(__dirname, 'preload.js');
 
