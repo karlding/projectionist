@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router';
-import { getPageNavigation, handleKeyDown, handleKeyUp } from './songNumberInput';
+import { useMachine } from '@xstate/react';
+import { keyboardMachine, clampLyricsFontSizeIndex } from './keyboardMachine';
 
 const sourceSkid = 1;
 const languageSkid = 1;
@@ -59,10 +60,18 @@ function Homepage() {
   const [error, setError] = React.useState<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(0);
   const [lyricsFontSizeIndex, setLyricsFontSizeIndex] = React.useState(DEFAULT_LYRICS_FONT_SIZE_INDEX);
-  const digitBufferRef = React.useRef('');
   const lyricsScrollRef = React.useRef<HTMLDivElement>(null);
   const stanzaIndexByPageRef = React.useRef<number[]>([]);
   const isChorusRef = React.useRef<boolean[]>([]);
+
+  const [, sendKeyEvent] = useMachine(keyboardMachine, {
+    input: {
+      onNavigate: setCurrentPage,
+      onFontSizeDelta: (delta) =>
+        setLyricsFontSizeIndex((i) => clampLyricsFontSizeIndex(i + delta)),
+      onLoadSong: setSourceSequenceNbr,
+    },
+  });
 
   const { pages: displayPages, stanzaIndexByPage } = React.useMemo(
     () => buildDisplayPages(stanzas, languageCount),
@@ -119,64 +128,20 @@ function Homepage() {
 
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const result = handleKeyDown(e.key, e.ctrlKey, digitBufferRef.current);
-      digitBufferRef.current = result.buffer;
-      if (result.preventDefault) e.preventDefault();
-
-      const nav = getPageNavigation(e.key, e.ctrlKey, totalPagesRef.current, currentPageRef.current);
-      if (nav) {
-        setCurrentPage(nav.page);
-        e.preventDefault();
-      }
-
-      // Press 0 to jump to the chorus of the current verse
-      if (e.key === '0') {
-        const byPage = stanzaIndexByPageRef.current;
-        const chorusFlags = isChorusRef.current;
-        const page = currentPageRef.current;
-        if (byPage.length > 0 && page < byPage.length && chorusFlags.length > 0) {
-          const currentStanzaIdx = byPage[page];
-          if (!chorusFlags[currentStanzaIdx]) {
-            // In a verse: find next chorus stanza
-            let chorusStanzaIdx = -1;
-            for (let i = currentStanzaIdx + 1; i < chorusFlags.length; i++) {
-              if (chorusFlags[i]) {
-                chorusStanzaIdx = i;
-                break;
-              }
-            }
-            if (chorusStanzaIdx >= 0) {
-              const chorusPage = byPage.findIndex((s) => s === chorusStanzaIdx);
-              if (chorusPage >= 0) {
-                setCurrentPage(chorusPage);
-                e.preventDefault();
-              }
-            }
-          }
-        }
-      }
-
-      if (e.key === '=' || e.key === '+') {
-        setLyricsFontSizeIndex((i) => clampPage(i + 1, LYRICS_FONT_SIZES.length));
-        e.preventDefault();
-      } else if (e.key === '-') {
-        setLyricsFontSizeIndex((i) => clampPage(i - 1, LYRICS_FONT_SIZES.length));
-        e.preventDefault();
-      }
-
-      // Scroll lyrics with up/down arrows when content overflows
-      const scrollEl = lyricsScrollRef.current;
-      if (scrollEl && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-        const step = 56;
-        const before = scrollEl.scrollTop;
-        scrollEl.scrollTop += e.key === 'ArrowDown' ? step : -step;
-        if (scrollEl.scrollTop !== before) e.preventDefault();
-      }
+      sendKeyEvent({
+        type: 'KEY_DOWN',
+        key: e.key,
+        ctrlKey: e.ctrlKey,
+        domEvent: e,
+        totalPages: totalPagesRef.current,
+        currentPage: currentPageRef.current,
+        stanzaIndexByPage: stanzaIndexByPageRef.current,
+        isChorus: isChorusRef.current,
+        lyricsScrollEl: lyricsScrollRef.current,
+      });
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      const result = handleKeyUp(e.key, digitBufferRef.current);
-      digitBufferRef.current = result.buffer;
-      if (result.sequenceNbr !== null) setSourceSequenceNbr(result.sequenceNbr);
+      sendKeyEvent({ type: 'KEY_UP', key: e.key });
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
@@ -184,7 +149,7 @@ function Homepage() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, []);
+  }, [sendKeyEvent]);
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-white">
