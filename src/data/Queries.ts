@@ -27,9 +27,9 @@ function safeInt(n: number): number {
 /** Title uses first language only. */
 const TITLE_LANGUAGE_SKID = 1;
 
-/** Bind (sourceSkid, sourceSequenceNbr) for queries. Pass as strings so node:sqlite matches TEXT (e.g. SourceSequenceNbr) and INTEGER columns. */
-function bindParams(sourceSkid: number, sourceSequenceNbr: number): [string, string] {
-  return [String(safeInt(sourceSkid)), String(safeInt(sourceSequenceNbr))];
+/** Bind (sourceSkid, sourceSequenceNbr) for queries. Both are INTEGER in the schema. */
+function bindParams(sourceSkid: number, sourceSequenceNbr: number): [number, number] {
+  return [safeInt(sourceSkid), safeInt(sourceSequenceNbr)];
 }
 
 /** Section: section[sentenceIndex][langIndex] = line text. */
