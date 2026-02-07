@@ -71,6 +71,12 @@ function Homepage() {
       } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
         setCurrentPage((prev) => clampPage(prev - 1, t));
         e.preventDefault();
+      } else if (!e.ctrlKey && /^[0-9]$/.test(e.key)) {
+        const verse = e.key === '0' ? 10 : parseInt(e.key, 10);
+        if (verse >= 1 && verse <= t) {
+          setCurrentPage(verse - 1);
+          e.preventDefault();
+        }
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
