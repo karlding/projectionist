@@ -5,6 +5,7 @@
 
 import { setup, assign, enqueueActions } from 'xstate';
 import { getPageNavigation, handleKeyDown, handleKeyUp } from './songNumberInput';
+import { totalVersesFromChorus, stanzaIndexForVerse } from './displayPages';
 
 const LYRICS_FONT_SIZES_LENGTH = 6;
 
@@ -77,13 +78,15 @@ export const keyboardMachine = keyboardSetup.createMachine({
               }
             } else if (!ctrlKey && stanzaIndexByPage.length > 0 && isChorus.length > 0) {
               const verse = key === '0' ? 10 : parseInt(key, 10);
-              const totalStanzas = isChorus.length;
-              if (verse >= 1 && verse <= totalStanzas) {
-                const stanzaIdx = verse - 1;
-                const targetPage = stanzaIndexByPage.findIndex((s) => s === stanzaIdx);
-                if (targetPage >= 0) {
-                  context.onNavigate(targetPage);
-                  domEvent.preventDefault();
+              const totalVerses = totalVersesFromChorus(isChorus);
+              if (verse >= 1 && verse <= totalVerses) {
+                const stanzaIdx = stanzaIndexForVerse(verse, isChorus);
+                if (stanzaIdx >= 0) {
+                  const targetPage = stanzaIndexByPage.findIndex((s) => s === stanzaIdx);
+                  if (targetPage >= 0) {
+                    context.onNavigate(targetPage);
+                    domEvent.preventDefault();
+                  }
                 }
               }
             }

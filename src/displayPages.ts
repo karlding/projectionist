@@ -85,6 +85,19 @@ export function totalVersesFromChorus(isChorus: boolean[]): number {
   return n || 1;
 }
 
+/** Stanza index for the N-th verse (1-based). Verse = non-chorus stanza. Returns -1 if out of range. */
+export function stanzaIndexForVerse(verseNum: number, isChorus: boolean[]): number {
+  if (verseNum < 1) return -1;
+  let count = 0;
+  for (let s = 0; s < isChorus.length; s++) {
+    if (!isChorus[s]) {
+      count++;
+      if (count === verseNum) return s;
+    }
+  }
+  return -1;
+}
+
 /** Compute current verse number for a given page. */
 export function currentVerseForPage(
   currentPage: number,

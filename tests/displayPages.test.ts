@@ -4,6 +4,7 @@ import {
   getLineDecoration,
   totalVersesFromChorus,
   currentVerseForPage,
+  stanzaIndexForVerse,
   SENTENCES_PER_LANGUAGE,
   LINES_PER_PAGE_SINGLE_LANGUAGE,
 } from '../src/displayPages';
@@ -85,6 +86,20 @@ describe('displayPages', () => {
       expect(currentVerseForPage(0, stanzaIndexByPage, isChorus)).toBe(1);
       expect(currentVerseForPage(2, stanzaIndexByPage, isChorus)).toBe(1);
       expect(currentVerseForPage(3, stanzaIndexByPage, isChorus)).toBe(2);
+    });
+  });
+
+  describe('stanzaIndexForVerse', () => {
+    it('returns stanza index for N-th verse (1-based), skipping chorus', () => {
+      const isChorus = [false, true, false, true, false]; // V, C, V, C, V
+      expect(stanzaIndexForVerse(1, isChorus)).toBe(0);
+      expect(stanzaIndexForVerse(2, isChorus)).toBe(2);
+      expect(stanzaIndexForVerse(3, isChorus)).toBe(4);
+    });
+    it('returns -1 when verse number out of range', () => {
+      const isChorus = [false, true, false];
+      expect(stanzaIndexForVerse(0, isChorus)).toBe(-1);
+      expect(stanzaIndexForVerse(3, isChorus)).toBe(-1);
     });
   });
 });

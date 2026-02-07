@@ -162,39 +162,38 @@ describe('keyboardMachine', () => {
 
     it('calls onNavigate for digit 1–9 without Ctrl (verse jump to first page of that verse)', () => {
       const { actor, onNavigate } = createTestActor();
-      // stanzaIndexByPage: [0, 0, 1, 1, 2, 2] → verse 2 = stanza 1, first page is index 2
+      // stanzaIndexByPage: [0, 0, 1, 1, 2, 2]; isChorus: [false, true, false] → verse 1 = stanza 0, verse 2 = stanza 2
+      // verse 2 = second non-chorus stanza = stanza 2, first page is index 4
       keyDown(actor, '2', false, createMockDomEvent(), {
         totalPages: 6,
         currentPage: 0,
         stanzaIndexByPage: [0, 0, 1, 1, 2, 2],
-        isChorus: [false, true, false, true, false, true],
+        isChorus: [false, true, false],
       });
-      expect(onNavigate).toHaveBeenCalledWith(2); // verse 2 → first page of stanza 1
+      expect(onNavigate).toHaveBeenCalledWith(4); // verse 2 → first page of stanza 2 (not chorus stanza 1)
       onNavigate.mockClear();
-      // verse 3 = stanza 2, first page is index 4
-      keyDown(actor, '3', false, createMockDomEvent(), {
+      keyDown(actor, '1', false, createMockDomEvent(), {
         totalPages: 6,
-        currentPage: 0,
+        currentPage: 4,
         stanzaIndexByPage: [0, 0, 1, 1, 2, 2],
-        isChorus: [false, true, false, true, false, true],
+        isChorus: [false, true, false],
       });
-      expect(onNavigate).toHaveBeenCalledWith(4); // verse 3 → first page of stanza 2
+      expect(onNavigate).toHaveBeenCalledWith(0); // verse 1 → first page of stanza 0
     });
 
-    it('verse jump: pressing 2 goes to first page of verse 2, not page index 1 (regression)', () => {
-      // When verse 1 spans multiple pages (e.g. pages 0–1), digit 2 must jump to the first page
-      // of verse 2 (page index 2), not to page index 1. Otherwise "pressing 2" would land on
-      // the second page of verse 1 instead of verse 2.
+    it('verse jump: pressing 2 goes to verse 2 (first page of that verse), not chorus (regression)', () => {
+      // Digit 2 must jump to the first page of verse 2 (second non-chorus stanza), not to the chorus.
+      // Layout: stanza 0 = verse 1 (pages 0,1), stanza 1 = chorus (pages 2,3), stanza 2 = verse 2 (pages 4,5).
       const { actor, onNavigate } = createTestActor();
-      const stanzaIndexByPage = [0, 0, 1, 1, 2, 2]; // verse 1 = pages 0,1; verse 2 = pages 2,3; verse 3 = pages 4,5
+      const stanzaIndexByPage = [0, 0, 1, 1, 2, 2];
       keyDown(actor, '2', false, createMockDomEvent(), {
         totalPages: stanzaIndexByPage.length,
         currentPage: 0,
         stanzaIndexByPage,
-        isChorus: [false, true, false, true, false, true],
+        isChorus: [false, true, false],
       });
       const targetPage = onNavigate.mock.calls[0][0];
-      expect(targetPage).toBe(2); // first page of verse 2 (stanza 1), not 1 (page 2 of verse 1)
+      expect(targetPage).toBe(4); // first page of verse 2 (stanza 2), not 2 (chorus)
     });
 
     it('clamps navigation to valid page range', () => {
