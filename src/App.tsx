@@ -104,35 +104,43 @@ function Homepage() {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-white">
-      <header className="flex-shrink-0 sticky top-0 z-10 flex items-baseline justify-between gap-4 px-8 pt-6 pb-4 border-b border-gray-200 bg-white">
-        <h1 className="text-2xl font-semibold">
+      {/* Title with full-width horizontal line below */}
+      <header className="flex-shrink-0 sticky top-0 z-10 px-8 pt-6 pb-4 border-b border-gray-200 bg-white">
+        <h1 className="text-2xl font-semibold text-center">
           {title.length > 0 ? title.join(' / ') : 'Projectionist'}
         </h1>
-        {!loading && !error && stanzas.length > 0 && totalVerses > 0 && (
-          <span className="text-gray-500 text-sm tabular-nums">{currentVerse} / {totalVerses}</span>
-        )}
       </header>
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col px-8 py-6">
-        {loading ? (
-          <p>Loading…</p>
-        ) : error ? (
-          <p className="text-red-600">{error}</p>
-        ) : stanzas.length > 0 ? (
-          <div className="text-gray-700 overflow-hidden space-y-3">
-            {(Array.isArray(stanzas[currentPage]) ? stanzas[currentPage] : []).map((content: string, i: number) => (
-              <React.Fragment key={i}>
-                <p className="whitespace-pre-wrap">
-                  {content}
-                </p>
-                {(i + 1) % languageCount === 0 && i < (stanzas[currentPage]?.length ?? 1) - 1 && (
-                  <hr className="border-gray-300 my-2" />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500">No song found for this number.</p>
+      {/* Two columns when song loaded: verse indicator (sticky left) | lyrics (majority) — same top alignment */}
+      <div className={`flex-1 min-h-0 overflow-hidden pt-6 ${!loading && !error && stanzas.length > 0 && totalVerses > 0 ? 'grid grid-cols-[5rem_1fr] items-start' : 'flex flex-col'}`}>
+        {!loading && !error && stanzas.length > 0 && totalVerses > 0 && (
+          <aside className="border-r border-gray-200 bg-white sticky top-0 left-0 z-10 px-2">
+            <span className="text-gray-500 text-sm tabular-nums text-center block">{currentVerse} / {totalVerses}</span>
+          </aside>
         )}
+        <div className="min-w-0 min-h-0 flex flex-col overflow-hidden">
+          {loading ? (
+            <p className="px-8 py-6">Loading…</p>
+          ) : error ? (
+            <p className="px-8 py-6 text-red-600">{error}</p>
+          ) : stanzas.length > 0 ? (
+            <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-6">
+              <div className="text-gray-700">
+                {(Array.isArray(stanzas[currentPage]) ? stanzas[currentPage] : []).map((content: string, i: number) => (
+                  <React.Fragment key={i}>
+                    <p className="whitespace-pre-wrap py-0.5">
+                      {content}
+                    </p>
+                    {(i + 1) % languageCount === 0 && i < (stanzas[currentPage]?.length ?? 1) - 1 && (
+                      <hr className="border-0 border-t border-gray-200 my-3 w-full" />
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="px-8 py-6 text-gray-500">No song found for this number.</p>
+          )}
+        </div>
       </div>
     </div>
   );
