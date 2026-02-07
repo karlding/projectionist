@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@layer base {
+  html {
+    font-size: 1.65rem;
+  }
+}
+
 html,
 body {
   font-family:
@@ -16,4 +22,13 @@ body {
   height: 100%;
   width: 100%;
   overflow: hidden;
+}
+
+/* Hide scrollbar while keeping element scrollable (mouse wheel, arrow keys) */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

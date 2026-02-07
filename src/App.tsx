@@ -10,6 +10,15 @@ function clampPage(page: number, total: number): number {
   return Math.max(0, Math.min(page, total - 1));
 }
 
+/** Max sentences per language per page (4 per language → 8 rows for 2 languages). */
+const SENTENCES_PER_LANGUAGE = 4;
+/** Single-language songs can fit more lines (no alternating language rows). */
+const LINES_PER_PAGE_SINGLE_LANGUAGE = 8;
+
+/** Lyrics font size steps: '=' increases, '-' decreases. */
+const LYRICS_FONT_SIZES = ['text-base', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl', 'text-4xl'];
+const DEFAULT_LYRICS_FONT_SIZE_INDEX = 0; // text-2xl
+
 /** Normalize stanzas array (handles legacy flat string[] from older API if needed). */
 function normalizeStanzas(s: string[] | string[][] | null | undefined): string[][] {
   if (!s || !Array.isArray(s)) return [];
@@ -17,6 +26,27 @@ function normalizeStanzas(s: string[] | string[][] | null | undefined): string[]
   const first = s[0];
   if (Array.isArray(first)) return s as string[][];
   return (s as string[]).map((line) => [line]);
+}
+
+/** Chunk stanzas into display pages: at most 4 sentences per language (8 rows for 2 langs), or 8 lines for single language. Each page contains lines from a single stanza only (no mixing verses). */
+function buildDisplayPages(stanzas: string[][], languageCount: number): { pages: string[][]; stanzaIndexByPage: number[] } {
+  const linesPerPage = languageCount <= 1
+    ? LINES_PER_PAGE_SINGLE_LANGUAGE
+    : SENTENCES_PER_LANGUAGE * languageCount;
+  const pages: string[][] = [];
+  const stanzaIndexByPage: number[] = [];
+  for (let s = 0; s < stanzas.length; s++) {
+    const stanza = stanzas[s];
+    for (let i = 0; i < stanza.length; i += linesPerPage) {
+      pages.push(stanza.slice(i, i + linesPerPage));
+      stanzaIndexByPage.push(s);
+    }
+  }
+  if (pages.length === 0) {
+    pages.push([]);
+    stanzaIndexByPage.push(0);
+  }
+  return { pages, stanzaIndexByPage };
 }
 
 function Homepage() {
@@ -28,9 +58,15 @@ function Homepage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(0);
+  const [lyricsFontSizeIndex, setLyricsFontSizeIndex] = React.useState(DEFAULT_LYRICS_FONT_SIZE_INDEX);
   const digitBufferRef = React.useRef('');
+  const lyricsScrollRef = React.useRef<HTMLDivElement>(null);
 
-  const totalPages = stanzas.length > 0 ? stanzas.length : 1;
+  const { pages: displayPages, stanzaIndexByPage } = React.useMemo(
+    () => buildDisplayPages(stanzas, languageCount),
+    [stanzas, languageCount]
+  );
+  const totalPages = displayPages.length;
   const totalPagesRef = React.useRef(totalPages);
   totalPagesRef.current = totalPages;
   const currentPageRef = React.useRef(currentPage);
@@ -38,9 +74,9 @@ function Homepage() {
 
   const totalVerses = isChorus.filter((c) => !c).length || 1;
   const currentVerse =
-    isChorus.length > 0
+    stanzaIndexByPage.length > 0 && currentPage < stanzaIndexByPage.length
       ? isChorus
-          .slice(0, currentPage + 1)
+          .slice(0, stanzaIndexByPage[currentPage] + 1)
           .filter((c) => !c).length
       : 1;
 
@@ -88,6 +124,23 @@ function Homepage() {
         setCurrentPage(nav.page);
         e.preventDefault();
       }
+
+      if (e.key === '=' || e.key === '+') {
+        setLyricsFontSizeIndex((i) => clampPage(i + 1, LYRICS_FONT_SIZES.length));
+        e.preventDefault();
+      } else if (e.key === '-') {
+        setLyricsFontSizeIndex((i) => clampPage(i - 1, LYRICS_FONT_SIZES.length));
+        e.preventDefault();
+      }
+
+      // Scroll lyrics with up/down arrows when content overflows
+      const scrollEl = lyricsScrollRef.current;
+      if (scrollEl && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        const step = 56;
+        const before = scrollEl.scrollTop;
+        scrollEl.scrollTop += e.key === 'ArrowDown' ? step : -step;
+        if (scrollEl.scrollTop !== before) e.preventDefault();
+      }
     };
     const onKeyUp = (e: KeyboardEvent) => {
       const result = handleKeyUp(e.key, digitBufferRef.current);
@@ -107,34 +160,44 @@ function Homepage() {
       {/* Title with full-width horizontal line below */}
       <header className="flex-shrink-0 sticky top-0 z-10 px-8 pt-6 pb-4 border-b border-gray-200 bg-white">
         <h1 className="text-2xl font-semibold text-center">
-          {title.length > 0 ? title.join(' / ') : 'Projectionist'}
+          {title.length > 0 ? `${sourceSequenceNbr}: ${title.join(' / ')}` : 'Projectionist'}
         </h1>
       </header>
-      {/* Two columns when song loaded: verse indicator (sticky left) | lyrics (majority) — same top alignment */}
-      <div className={`flex-1 min-h-0 overflow-hidden pt-6 ${!loading && !error && stanzas.length > 0 && totalVerses > 0 ? 'grid grid-cols-[5rem_1fr] items-start' : 'flex flex-col'}`}>
+      {/* Two columns when song loaded: verse indicator (sticky left) | lyrics (majority) — flex so lyrics area has bounded height and can scroll */}
+      <div className={`flex-1 min-h-0 overflow-hidden pt-6 flex ${!loading && !error && stanzas.length > 0 && totalVerses > 0 ? 'flex-row' : 'flex-col'}`}>
         {!loading && !error && stanzas.length > 0 && totalVerses > 0 && (
-          <aside className="border-r border-gray-200 bg-white sticky top-0 left-0 z-10 px-2">
+          <aside className="flex-shrink-0 w-20 border-r border-gray-200 bg-white z-10 px-2 pt-0.5">
             <span className="text-gray-500 text-sm tabular-nums text-center block">{currentVerse} / {totalVerses}</span>
           </aside>
         )}
-        <div className="min-w-0 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
           {loading ? (
             <p className="px-8 py-6">Loading…</p>
           ) : error ? (
             <p className="px-8 py-6 text-red-600">{error}</p>
           ) : stanzas.length > 0 ? (
-            <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-6">
-              <div className="text-gray-700">
-                {(Array.isArray(stanzas[currentPage]) ? stanzas[currentPage] : []).map((content: string, i: number) => (
-                  <React.Fragment key={i}>
-                    <p className="whitespace-pre-wrap py-0.5">
-                      {content}
-                    </p>
-                    {(i + 1) % languageCount === 0 && i < (stanzas[currentPage]?.length ?? 1) - 1 && (
-                      <hr className="border-0 border-t border-gray-200 my-3 w-full" />
-                    )}
-                  </React.Fragment>
-                ))}
+            <div ref={lyricsScrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-8 pb-6">
+              <div className={`text-gray-700 ${LYRICS_FONT_SIZES[lyricsFontSizeIndex]}`}>
+                {(Array.isArray(displayPages[currentPage]) ? displayPages[currentPage] : []).map((content: string, i: number) => {
+                  const stanzaIdx = stanzaIndexByPage[currentPage] ?? 0;
+                  const nextStanzaIsChorus = stanzaIdx + 1 < isChorus.length && isChorus[stanzaIdx + 1];
+                  const isVerse = !isChorus[stanzaIdx];
+                  const isLastLine = i === (displayPages[currentPage]?.length ?? 1) - 1;
+                  const isLastPageOfStanza = currentPage >= totalPages - 1 || stanzaIndexByPage[currentPage + 1] !== stanzaIdx;
+                  const showYellowLine = isVerse && nextStanzaIsChorus && isLastLine && isLastPageOfStanza;
+                  return (
+                    <React.Fragment key={i}>
+                      <p className="whitespace-pre-wrap py-0.5">
+                        {content}
+                      </p>
+                      {showYellowLine ? (
+                        <hr className="border-0 border-t-2 border-yellow-500 my-3 w-full" />
+                      ) : (i + 1) % languageCount === 0 && !isLastLine ? (
+                        <hr className="border-0 border-t border-gray-200 my-3 w-full" />
+                      ) : null}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             </div>
           ) : (
