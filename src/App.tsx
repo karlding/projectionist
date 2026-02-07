@@ -1,21 +1,23 @@
 import * as React from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router';
 
+const sourceSkid = 1;
+const languageSkid = 1;
+
 function Homepage() {
+  const [sourceSequenceNbr, setSourceSequenceNbr] = React.useState(294);
   const [title, setTitle] = React.useState<string | null>(null);
   const [stanzas, setStanzas] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const sourceSkid = 1;
-  const sourceSequenceNbr = 294;
-  const languageSkid = 1;
+  const digitBufferRef = React.useRef('');
 
-  const loadSong = React.useCallback(() => {
+  const loadSong = React.useCallback((sequenceNbr: number) => {
     setLoading(true);
     setError(null);
     Promise.all([
-      window.api.getSongTitle(sourceSkid, sourceSequenceNbr, languageSkid),
-      window.api.getStanzas(sourceSkid, sourceSequenceNbr, languageSkid),
+      window.api.getSongTitle(sourceSkid, sequenceNbr, languageSkid),
+      window.api.getStanzas(sourceSkid, sequenceNbr, languageSkid),
     ])
       .then(([t, s]) => {
         setTitle(t);
@@ -28,8 +30,37 @@ function Homepage() {
   }, []);
 
   React.useEffect(() => {
-    loadSong();
-  }, [loadSong]);
+    loadSong(sourceSequenceNbr);
+  }, [sourceSequenceNbr, loadSong]);
+
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control') {
+        digitBufferRef.current = '';
+        return;
+      }
+      if (e.ctrlKey && /^[0-9]$/.test(e.key)) {
+        digitBufferRef.current += e.key;
+        e.preventDefault();
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control') {
+        const buf = digitBufferRef.current;
+        digitBufferRef.current = '';
+        if (buf.length > 0) {
+          const n = parseInt(buf, 10);
+          if (!Number.isNaN(n)) setSourceSequenceNbr(n);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, []);
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
