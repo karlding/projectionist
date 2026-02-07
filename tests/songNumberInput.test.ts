@@ -1,4 +1,4 @@
-import { getPageNavigation, handleKeyDown, handleKeyUp } from './songNumberInput';
+import { getPageNavigation, handleKeyDown, handleKeyUp } from '../src/songNumberInput';
 
 describe('songNumberInput', () => {
   describe('handleKeyDown', () => {

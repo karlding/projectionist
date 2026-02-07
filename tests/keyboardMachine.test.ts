@@ -1,5 +1,5 @@
 import { createActor } from 'xstate';
-import { keyboardMachine, clampLyricsFontSizeIndex } from './keyboardMachine';
+import { keyboardMachine, clampLyricsFontSizeIndex } from '../src/keyboardMachine';
 
 function createMockDomEvent(): { preventDefault: jest.Mock; key: string } {
   return {

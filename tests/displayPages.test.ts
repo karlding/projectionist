@@ -6,7 +6,7 @@ import {
   currentVerseForPage,
   SENTENCES_PER_LANGUAGE,
   LINES_PER_PAGE_SINGLE_LANGUAGE,
-} from './displayPages';
+} from '../src/displayPages';
 
 describe('displayPages', () => {
   describe('clampPage', () => {
