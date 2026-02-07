@@ -170,8 +170,8 @@ export function createQueries(db: Database) {
       const rows = titleStmt.all(a, b) as unknown as SongTitleRow[];
       return rows.map((r) => r.TitleName).filter(Boolean);
     },
-    /** Returns stanzas and per-stanza isChorus (verse vs chorus). Verse from StanzaSentence; chorus from ChorusSentence when present. Many songs have no chorus. */
-    getStanzas(sourceSkid: number, sourceSequenceNbr: number, _languageSkid: number): { stanzas: string[][]; isChorus: boolean[] } {
+    /** Returns stanzas, per-stanza isChorus, and languageCount (lines per sentence group for drawing separators). */
+    getStanzas(sourceSkid: number, sourceSequenceNbr: number, _languageSkid: number): { stanzas: string[][]; isChorus: boolean[]; languageCount: number } {
       const [a, b] = bindParams(sourceSkid, sourceSequenceNbr);
       const rows = stanzasStmt.all(a, b) as unknown as StanzaSentenceRow[];
       const byStanza = new Map<number, { seq: number; lang: number; content: string }[]>();
@@ -209,19 +209,22 @@ export function createQueries(db: Database) {
       const allStanzaNbrs = [...new Set([...byStanza.keys(), ...chorusContentByStanza.keys()])].sort((x, y) => x - y);
       const stanzas: string[][] = [];
       const isChorus: boolean[] = [];
+      let languageCount = 1;
       for (const n of allStanzaNbrs) {
         const verseItems = byStanza.get(n);
         const chorusItems = chorusContentByStanza.get(n);
         if (verseItems?.length) {
+          if (languageCount === 1) languageCount = new Set(verseItems.map((i) => i.lang)).size || 1;
           stanzas.push(interleaveBySentenceThenLanguage(verseItems));
           isChorus.push(false);
         }
         if (chorusItems?.length) {
+          if (languageCount === 1) languageCount = new Set(chorusItems.map((i) => i.lang)).size || 1;
           stanzas.push(interleaveBySentenceThenLanguage(chorusItems));
           isChorus.push(true);
         }
       }
-      return { stanzas, isChorus };
+      return { stanzas, isChorus, languageCount };
     },
     getChorus(sourceSkid: number, sourceSequenceNbr: number, _languageSkid: number): string | null {
       const [a, b] = bindParams(sourceSkid, sourceSequenceNbr);

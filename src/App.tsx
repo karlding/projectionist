@@ -24,6 +24,7 @@ function Homepage() {
   const [title, setTitle] = React.useState<string[]>([]);
   const [stanzas, setStanzas] = React.useState<string[][]>([]);
   const [isChorus, setIsChorus] = React.useState<boolean[]>([]);
+  const [languageCount, setLanguageCount] = React.useState(1);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(0);
@@ -51,16 +52,15 @@ function Homepage() {
       window.api.getStanzas(sourceSkid, sequenceNbr, languageSkid),
     ])
       .then(([t, s]) => {
-        console.log('[loadSong] getStanzas response:', s, 'stanzas?.length:', (s as { stanzas?: unknown[] })?.stanzas?.length);
         setTitle(t);
         const stanzasList = normalizeStanzas((s as { stanzas?: string[][] }).stanzas);
-        console.log('[loadSong] stanzasList.length:', stanzasList.length, 'first:', stanzasList[0]?.[0]?.slice(0, 50));
         setStanzas(stanzasList);
         const chorusFlags =
           Array.isArray(s.isChorus) && s.isChorus.length === stanzasList.length
             ? s.isChorus
             : stanzasList.map(() => false);
         setIsChorus(chorusFlags);
+        setLanguageCount(Math.max(1, Number((s as { languageCount?: number }).languageCount) || 1));
         setCurrentPage(0);
       })
       .catch((err: Error) => {
@@ -120,9 +120,14 @@ function Homepage() {
         ) : stanzas.length > 0 ? (
           <div className="text-gray-700 overflow-hidden space-y-3">
             {(Array.isArray(stanzas[currentPage]) ? stanzas[currentPage] : []).map((content: string, i: number) => (
-              <p key={i} className="whitespace-pre-wrap">
-                {content}
-              </p>
+              <React.Fragment key={i}>
+                <p className="whitespace-pre-wrap">
+                  {content}
+                </p>
+                {(i + 1) % languageCount === 0 && i < (stanzas[currentPage]?.length ?? 1) - 1 && (
+                  <hr className="border-gray-300 my-2" />
+                )}
+              </React.Fragment>
             ))}
           </div>
         ) : (
