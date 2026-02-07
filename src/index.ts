@@ -12,24 +12,26 @@ declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 
 let dbQueries: ReturnType<typeof createQueries> | null = null;
 
-function getDbPath(): string {
+const DB_NAME = 'songs.sqlite3';
+
+function getDbPath(dbName: string): string {
   // Prefer cwd (project root when running "npm start"), then app path, then relative to main bundle
   const candidates = [
-    path.join(process.cwd(), 'songs.sqlite3'),
-    path.join(app.getAppPath(), 'songs.sqlite3'),
-    path.resolve(__dirname, '..', '..', 'songs.sqlite3'),
+    path.join(process.cwd(), dbName),
+    path.join(app.getAppPath(), dbName),
+    path.resolve(__dirname, '..', '..', dbName),
   ];
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
   }
   throw new Error(
-    `songs.sqlite3 not found. Tried: ${candidates.join(', ')}`
+    `${dbName} not found. Tried: ${candidates.join(', ')}`
   );
 }
 
 function getQueries() {
   if (!dbQueries) {
-    const dbPath = getDbPath();
+    const dbPath = getDbPath(DB_NAME);
     const db = openDatabase(dbPath);
     dbQueries = createQueries(db);
   }
