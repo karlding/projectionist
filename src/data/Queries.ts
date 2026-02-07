@@ -31,6 +31,18 @@ function bindParams(sourceSkid: number, sourceSequenceNbr: number): [string, str
   return [String(safeInt(sourceSkid)), String(safeInt(sourceSequenceNbr))];
 }
 
+/** Section: section[sentenceIndex][langIndex] = line text. */
+export type Section = string[][];
+
+export interface SongData {
+  sourceSkid: number;
+  sourceSequenceNbr: number;
+  title: string[];
+  sections: Section[];
+  isChorus: boolean[];
+  languageSkid: number[];
+}
+
 /** Order lines by sentence index then language: lang1 line1, lang2 line1, lang1 line2, lang2 line2, ... */
 function interleaveBySentenceThenLanguage(
   items: { seq: number; lang: number; content: string }[]
@@ -38,6 +50,39 @@ function interleaveBySentenceThenLanguage(
   return [...items]
     .sort((a, b) => a.seq - b.seq || a.lang - b.lang)
     .map((x) => x.content);
+}
+
+/** Build section as sentence x lang matrix from ordered items (seq, lang, content). Returns { section, languageSkid } with lang order. */
+function buildSection(
+  items: { seq: number; lang: number; content: string }[],
+  langOrder: number[]
+): Section {
+  const bySeq = new Map<number, { lang: number; content: string }[]>();
+  for (const x of items) {
+    if (!bySeq.has(x.seq)) bySeq.set(x.seq, []);
+    bySeq.get(x.seq)!.push({ lang: x.lang, content: x.content });
+  }
+  const sentences = [...bySeq.keys()].sort((a, b) => a - b);
+  const section: Section = [];
+  for (const seq of sentences) {
+    const lineItems = bySeq.get(seq)!;
+    const row = langOrder.map((lang) => lineItems.find((i) => i.lang === lang)?.content ?? '');
+    section.push(row);
+  }
+  return section;
+}
+
+/** Unique language skids in order of first appearance in items. */
+function languageOrder(items: { seq: number; lang: number; content: string }[]): number[] {
+  const seen = new Set<number>();
+  const order: number[] = [];
+  for (const x of [...items].sort((a, b) => a.seq - b.seq || a.lang - b.lang)) {
+    if (!seen.has(x.lang)) {
+      seen.add(x.lang);
+      order.push(x.lang);
+    }
+  }
+  return order;
 }
 
 const TITLE_SQL = `
@@ -165,14 +210,11 @@ export function createQueries(db: Database) {
   }
 
   return {
-    getSongTitle(sourceSkid: number, sourceSequenceNbr: number, _languageSkid: number): string[] {
+    getSongData(sourceSkid: number, sourceSequenceNbr: number): SongData {
       const [a, b] = bindParams(sourceSkid, sourceSequenceNbr);
-      const rows = titleStmt.all(a, b) as unknown as SongTitleRow[];
-      return rows.map((r) => r.TitleName).filter(Boolean);
-    },
-    /** Returns stanzas, per-stanza isChorus, and languageCount (lines per sentence group for drawing separators). */
-    getStanzas(sourceSkid: number, sourceSequenceNbr: number, _languageSkid: number): { stanzas: string[][]; isChorus: boolean[]; languageCount: number } {
-      const [a, b] = bindParams(sourceSkid, sourceSequenceNbr);
+      const titleRows = titleStmt.all(a, b) as unknown as SongTitleRow[];
+      const title = titleRows.map((r) => r.TitleName).filter(Boolean);
+
       const rows = stanzasStmt.all(a, b) as unknown as StanzaSentenceRow[];
       const byStanza = new Map<number, { seq: number; lang: number; content: string }[]>();
       const chorusByStanza = new Map<number, boolean>();
@@ -207,29 +249,31 @@ export function createQueries(db: Database) {
         chorusContentByStanza.get(n)!.push({ seq, lang, content: r.Content });
       }
       const allStanzaNbrs = [...new Set([...byStanza.keys(), ...chorusContentByStanza.keys()])].sort((x, y) => x - y);
-      const stanzas: string[][] = [];
+      const sections: Section[] = [];
       const isChorus: boolean[] = [];
-      let languageCount = 1;
+      let languageSkid: number[] = [];
       for (const n of allStanzaNbrs) {
         const verseItems = byStanza.get(n);
         const chorusItems = chorusContentByStanza.get(n);
         if (verseItems?.length) {
-          if (languageCount === 1) languageCount = new Set(verseItems.map((i) => i.lang)).size || 1;
-          stanzas.push(interleaveBySentenceThenLanguage(verseItems));
+          if (languageSkid.length === 0) languageSkid = languageOrder(verseItems);
+          sections.push(buildSection(verseItems, languageSkid));
           isChorus.push(false);
         }
         if (chorusItems?.length) {
-          if (languageCount === 1) languageCount = new Set(chorusItems.map((i) => i.lang)).size || 1;
-          stanzas.push(interleaveBySentenceThenLanguage(chorusItems));
+          if (languageSkid.length === 0) languageSkid = languageOrder(chorusItems);
+          sections.push(buildSection(chorusItems, languageSkid));
           isChorus.push(true);
         }
       }
-      return { stanzas, isChorus, languageCount };
-    },
-    getChorus(sourceSkid: number, sourceSequenceNbr: number, _languageSkid: number): string | null {
-      const [a, b] = bindParams(sourceSkid, sourceSequenceNbr);
-      const row = chorusStmt.get(a, b) as unknown as SentenceRow | undefined;
-      return row?.Content ?? null;
+      return {
+        sourceSkid,
+        sourceSequenceNbr,
+        title,
+        sections,
+        isChorus,
+        languageSkid,
+      };
     },
   };
 }

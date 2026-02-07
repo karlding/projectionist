@@ -61,14 +61,8 @@ const createWindow = (): void => {
 };
 
 // Register IPC handlers for database queries (used by renderer via preload).
-ipcMain.handle('db:getSongTitle', (_event, sourceSkid: number, sourceSequenceNbr: number, languageSkid: number) => {
-  return getQueries().getSongTitle(Number(sourceSkid), Number(sourceSequenceNbr), Number(languageSkid));
-});
-ipcMain.handle('db:getStanzas', (_event, sourceSkid: number, sourceSequenceNbr: number, languageSkid: number) => {
-  return getQueries().getStanzas(Number(sourceSkid), Number(sourceSequenceNbr), Number(languageSkid));
-});
-ipcMain.handle('db:getChorus', (_event, sourceSkid: number, sourceSequenceNbr: number, languageSkid: number) => {
-  return getQueries().getChorus(Number(sourceSkid), Number(sourceSequenceNbr), Number(languageSkid));
+ipcMain.handle('db:getSongData', (_event, sourceSkid: number, sourceSequenceNbr: number) => {
+  return getQueries().getSongData(Number(sourceSkid), Number(sourceSequenceNbr));
 });
 
 // This method will be called when Electron has finished

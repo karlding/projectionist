@@ -20,15 +20,6 @@ const LINES_PER_PAGE_SINGLE_LANGUAGE = 8;
 const LYRICS_FONT_SIZES = ['text-base', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl', 'text-4xl'];
 const DEFAULT_LYRICS_FONT_SIZE_INDEX = 0; // text-2xl
 
-/** Normalize stanzas array (handles legacy flat string[] from older API if needed). */
-function normalizeStanzas(s: string[] | string[][] | null | undefined): string[][] {
-  if (!s || !Array.isArray(s)) return [];
-  if (s.length === 0) return [];
-  const first = s[0];
-  if (Array.isArray(first)) return s as string[][];
-  return (s as string[]).map((line) => [line]);
-}
-
 /** Chunk stanzas into display pages: at most 4 sentences per language (8 rows for 2 langs), or 8 lines for single language. Each page contains lines from a single stanza only (no mixing verses). */
 function buildDisplayPages(stanzas: string[][], languageCount: number): { pages: string[][]; stanzaIndexByPage: number[] } {
   const linesPerPage = languageCount <= 1
@@ -96,20 +87,18 @@ function Homepage() {
   const loadSong = React.useCallback((sequenceNbr: number) => {
     setLoading(true);
     setError(null);
-    Promise.all([
-      window.api.getSongTitle(sourceSkid, sequenceNbr, languageSkid),
-      window.api.getStanzas(sourceSkid, sequenceNbr, languageSkid),
-    ])
-      .then(([t, s]) => {
-        setTitle(t);
-        const stanzasList = normalizeStanzas((s as { stanzas?: string[][] }).stanzas);
+    window.api
+      .getSongData(sourceSkid, sequenceNbr)
+      .then((data) => {
+        setTitle(data.title);
+        const stanzasList = data.sections.map((section) => section.flatMap((row) => row));
         setStanzas(stanzasList);
-        const chorusFlags =
-          Array.isArray(s.isChorus) && s.isChorus.length === stanzasList.length
-            ? s.isChorus
-            : stanzasList.map(() => false);
-        setIsChorus(chorusFlags);
-        setLanguageCount(Math.max(1, Number((s as { languageCount?: number }).languageCount) || 1));
+        setIsChorus(
+          data.isChorus.length === stanzasList.length
+            ? data.isChorus
+            : stanzasList.map(() => false)
+        );
+        setLanguageCount(Math.max(1, data.languageSkid.length));
         setCurrentPage(0);
       })
       .catch((err: Error) => {
