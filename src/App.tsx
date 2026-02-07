@@ -133,7 +133,7 @@ function SongView() {
   const header = hasSongData ? (
     <SongHeader titleLine={titleLine} sourceSequenceNbr={sourceSequenceNbr} />
   ) : (
-    <header className="flex-shrink-0 sticky top-0 z-10 px-8 pt-6 pb-4 border-b border-gray-200 bg-white">
+    <header className="flex-shrink-0 sticky top-0 z-10 px-8 pt-6 pb-2 border-b border-gray-200 bg-white">
       <h1 className="text-2xl font-semibold text-center text-gray-500">
         {sourceSequenceNbr}: Loading…
       </h1>
@@ -144,7 +144,7 @@ function SongView() {
     <div className="h-full w-full flex flex-col overflow-hidden bg-white">
       {header}
       <div
-        className={`flex-1 min-h-0 overflow-hidden pt-6 flex ${
+        className={`flex-1 min-h-0 overflow-hidden pt-3 flex ${
           showTwoColumns ? 'flex-row' : 'flex-col'
         }`}
       >
