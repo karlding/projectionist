@@ -18,6 +18,8 @@ function sectionsToStanzas(sections: SongDataFromQueries['sections']): string[][
 export class Song {
   readonly sourceSkid: number;
   readonly sourceSequenceNbr: number;
+  // Song title
+  // each array element is a different language
   readonly title: string[];
   readonly stanzas: string[][];
   readonly isChorus: boolean[];
