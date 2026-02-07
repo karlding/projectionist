@@ -32,9 +32,9 @@ const TITLE_SQL = `
     AND Source.LanguageSkid = Song.LanguageSkid
   )
   WHERE (
-    Source.SourceSkid = __A__
-    AND SourceSong.SourceSequenceNbr = __B__
-    AND Song.LanguageSkid = __C__
+    Source.SourceSkid = ?
+    AND SourceSong.SourceSequenceNbr = ?
+    AND Song.LanguageSkid = ?
   )
 `;
 
@@ -58,9 +58,9 @@ const STANZAS_SQL = `
     AND Source.LanguageSkid = SourceSong.LanguageSkid
   )
   WHERE (
-    Source.SourceSkid = __A__
-    AND SourceSong.SourceSequenceNbr = __B__
-    AND Stanza.LanguageSkid = __C__
+    Source.SourceSkid = ?
+    AND SourceSong.SourceSequenceNbr = ?
+    AND Stanza.LanguageSkid = ?
   )
   ORDER BY Stanza.StanzaSequenceNbr
 `;
@@ -88,29 +88,31 @@ const CHORUS_SQL = `
     AND Source.LanguageSkid = SourceSong.LanguageSkid
   )
   WHERE (
-    Source.SourceSkid = __A__
-    AND SourceSong.SourceSequenceNbr = __B__
-    AND Stanza.LanguageSkid = __C__
+    Source.SourceSkid = ?
+    AND SourceSong.SourceSequenceNbr = ?
+    AND Stanza.LanguageSkid = ?
   )
 `;
 
 /**
  * Create query helpers for the songs database. Use only in the main process.
- * Uses inline integer params to avoid node:sqlite binding issues.
+ * Uses parameterized queries (? placeholders) so the driver binds values safely.
  */
 export function createQueries(db: Database) {
+  const titleStmt = db.prepare(TITLE_SQL);
+  const stanzasStmt = db.prepare(STANZAS_SQL);
+  const chorusStmt = db.prepare(CHORUS_SQL);
+
   return {
     getSongTitle(sourceSkid: number, sourceSequenceNbr: number, languageSkid: number): string | null {
       const a = safeInt(sourceSkid), b = safeInt(sourceSequenceNbr), c = safeInt(languageSkid);
-      const sql = TITLE_SQL.replace('__A__', String(a)).replace('__B__', String(b)).replace('__C__', String(c));
-      const row = db.prepare(sql).get() as unknown as SongTitleRow | undefined;
+      const row = titleStmt.get(a, b, c) as unknown as SongTitleRow | undefined;
       return row?.TitleName ?? null;
     },
     /** Returns stanzas as array of arrays: each stanza is an array of sentence strings. */
     getStanzas(sourceSkid: number, sourceSequenceNbr: number, languageSkid: number): string[][] {
       const a = safeInt(sourceSkid), b = safeInt(sourceSequenceNbr), c = safeInt(languageSkid);
-      const sql = STANZAS_SQL.replace('__A__', String(a)).replace('__B__', String(b)).replace('__C__', String(c));
-      const rows = db.prepare(sql).all() as unknown as StanzaSentenceRow[];
+      const rows = stanzasStmt.all(a, b, c) as unknown as StanzaSentenceRow[];
       const byStanza = new Map<number, string[]>();
       for (const r of rows) {
         const row = r as StanzaSentenceRow & Record<string, unknown>;
@@ -124,8 +126,7 @@ export function createQueries(db: Database) {
     },
     getChorus(sourceSkid: number, sourceSequenceNbr: number, languageSkid: number): string | null {
       const a = safeInt(sourceSkid), b = safeInt(sourceSequenceNbr), c = safeInt(languageSkid);
-      const sql = CHORUS_SQL.replace('__A__', String(a)).replace('__B__', String(b)).replace('__C__', String(c));
-      const row = db.prepare(sql).get() as unknown as SentenceRow | undefined;
+      const row = chorusStmt.get(a, b, c) as unknown as SentenceRow | undefined;
       return row?.Content ?? null;
     },
   };
