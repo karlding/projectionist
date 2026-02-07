@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router';
-import { handleKeyDown, handleKeyUp } from './songNumberInput';
+import { getPageNavigation, handleKeyDown, handleKeyUp } from './songNumberInput';
 
 const sourceSkid = 1;
 const languageSkid = 1;
@@ -31,6 +31,8 @@ function Homepage() {
   const totalPages = stanzas.length > 0 ? stanzas.length : 1;
   const totalPagesRef = React.useRef(totalPages);
   totalPagesRef.current = totalPages;
+  const currentPageRef = React.useRef(currentPage);
+  currentPageRef.current = currentPage;
 
   const loadSong = React.useCallback((sequenceNbr: number) => {
     setLoading(true);
@@ -64,19 +66,10 @@ function Homepage() {
       digitBufferRef.current = result.buffer;
       if (result.preventDefault) e.preventDefault();
 
-      const t = totalPagesRef.current;
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-        setCurrentPage((prev) => clampPage(prev + 1, t));
+      const nav = getPageNavigation(e.key, e.ctrlKey, totalPagesRef.current, currentPageRef.current);
+      if (nav) {
+        setCurrentPage(nav.page);
         e.preventDefault();
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        setCurrentPage((prev) => clampPage(prev - 1, t));
-        e.preventDefault();
-      } else if (!e.ctrlKey && /^[0-9]$/.test(e.key)) {
-        const verse = e.key === '0' ? 10 : parseInt(e.key, 10);
-        if (verse >= 1 && verse <= t) {
-          setCurrentPage(verse - 1);
-          e.preventDefault();
-        }
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {

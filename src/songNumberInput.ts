@@ -1,8 +1,15 @@
 /**
- * Pure logic for Ctrl+digit song number entry.
- * Buffer is managed by the caller (e.g. a ref); these functions take current buffer
- * and return the next buffer and any side-effect (preventDefault or sequence number to load).
+ * Pure logic for Ctrl+digit song number entry and page/verse navigation.
+ * Buffer is managed by the caller (e.g. a ref); these functions take current state
+ * and return the next state and any side-effect (preventDefault or sequence number to load).
  */
+
+export interface PageNavigationResult {
+  /** The page index to navigate to (0-based) */
+  page: number;
+  /** Whether the caller should call preventDefault() */
+  preventDefault: boolean;
+}
 
 export interface KeyDownResult {
   /** New buffer value after this keydown */
@@ -48,4 +55,34 @@ export function handleKeyUp(key: string, buffer: string): KeyUpResult {
     buffer: '',
     sequenceNbr: Number.isNaN(n) ? null : n,
   };
+}
+
+function clampPage(page: number, totalPages: number): number {
+  if (totalPages <= 0) return 0;
+  return Math.max(0, Math.min(page, totalPages - 1));
+}
+
+/**
+ * Determine page navigation from a keydown (arrows, PageUp/Down, or digit for verse jump).
+ * Returns null if the key does not trigger navigation.
+ */
+export function getPageNavigation(
+  key: string,
+  ctrlKey: boolean,
+  totalPages: number,
+  currentPage: number
+): PageNavigationResult | null {
+  if (key === 'ArrowRight' || key === 'PageDown') {
+    return { page: clampPage(currentPage + 1, totalPages), preventDefault: true };
+  }
+  if (key === 'ArrowLeft' || key === 'PageUp') {
+    return { page: clampPage(currentPage - 1, totalPages), preventDefault: true };
+  }
+  if (!ctrlKey && DIGIT.test(key)) {
+    const verse = key === '0' ? 10 : parseInt(key, 10);
+    if (verse >= 1 && verse <= totalPages) {
+      return { page: verse - 1, preventDefault: true };
+    }
+  }
+  return null;
 }
