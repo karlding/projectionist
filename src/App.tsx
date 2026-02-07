@@ -23,6 +23,7 @@ function Homepage() {
   const [sourceSequenceNbr, setSourceSequenceNbr] = React.useState(294);
   const [title, setTitle] = React.useState<string | null>(null);
   const [stanzas, setStanzas] = React.useState<string[][]>([]);
+  const [isChorus, setIsChorus] = React.useState<boolean[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(0);
@@ -34,6 +35,14 @@ function Homepage() {
   const currentPageRef = React.useRef(currentPage);
   currentPageRef.current = currentPage;
 
+  const totalVerses = isChorus.filter((c) => !c).length || 1;
+  const currentVerse =
+    isChorus.length > 0
+      ? isChorus
+          .slice(0, currentPage + 1)
+          .filter((c) => !c).length
+      : 1;
+
   const loadSong = React.useCallback((sequenceNbr: number) => {
     setLoading(true);
     setError(null);
@@ -43,7 +52,13 @@ function Homepage() {
     ])
       .then(([t, s]) => {
         setTitle(t);
-        setStanzas(normalizeStanzas(s));
+        const payload = s as { stanzas?: string[][] } | string[][];
+        const stanzasList = Array.isArray(payload)
+          ? normalizeStanzas(payload)
+          : normalizeStanzas(payload.stanzas);
+        setStanzas(stanzasList);
+        const chorusFlags = Array.isArray(payload) ? stanzasList.map(() => false) : (payload as { isChorus?: boolean[] }).isChorus;
+        setIsChorus(Array.isArray(chorusFlags) && chorusFlags.length === stanzasList.length ? chorusFlags : stanzasList.map(() => false));
         setCurrentPage(0);
       })
       .catch((err: Error) => {
@@ -87,9 +102,12 @@ function Homepage() {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-white">
-      <h1 className="flex-shrink-0 sticky top-0 z-10 px-8 pt-6 pb-4 text-2xl font-semibold border-b border-gray-200 bg-white">
-        {title ?? 'Projectionist'}
-      </h1>
+      <header className="flex-shrink-0 sticky top-0 z-10 flex items-baseline justify-between gap-4 px-8 pt-6 pb-4 border-b border-gray-200 bg-white">
+        <h1 className="text-2xl font-semibold">{title ?? 'Projectionist'}</h1>
+        {!loading && !error && stanzas.length > 0 && totalVerses > 0 && (
+          <span className="text-gray-500 text-sm tabular-nums">{currentVerse} / {totalVerses}</span>
+        )}
+      </header>
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col px-8 py-6">
         {loading ? (
           <p>Loading…</p>

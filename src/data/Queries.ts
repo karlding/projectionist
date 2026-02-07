@@ -11,6 +11,7 @@ export interface SentenceRow {
 export interface StanzaSentenceRow {
   StanzaNbr: number;
   Content: string;
+  IsChorus?: number; /* 0 or 1 from SQLite */
 }
 
 /** Ensure value is a safe integer for inlining in SQL (no injection). */
@@ -39,7 +40,8 @@ const TITLE_SQL = `
 `;
 
 const STANZAS_SQL = `
-  SELECT Stanza.StanzaSequenceNbr AS StanzaNbr, Sentence.Content
+  SELECT Stanza.StanzaSequenceNbr AS StanzaNbr, Sentence.Content,
+    (Stanza.ChorusSkid IS NOT NULL) AS IsChorus
   FROM Sentence
   INNER JOIN StanzaSentence ON (
     StanzaSentence.SentenceSkid = Sentence.SentenceSkid
@@ -109,20 +111,27 @@ export function createQueries(db: Database) {
       const row = titleStmt.get(a, b, c) as unknown as SongTitleRow | undefined;
       return row?.TitleName ?? null;
     },
-    /** Returns stanzas as array of arrays: each stanza is an array of sentence strings. */
-    getStanzas(sourceSkid: number, sourceSequenceNbr: number, languageSkid: number): string[][] {
+    /** Returns stanzas and per-stanza isChorus (verse vs chorus). Chorus stanzas follow their verse; verse number does not change until after the chorus. */
+    getStanzas(sourceSkid: number, sourceSequenceNbr: number, languageSkid: number): { stanzas: string[][]; isChorus: boolean[] } {
       const a = safeInt(sourceSkid), b = safeInt(sourceSequenceNbr), c = safeInt(languageSkid);
       const rows = stanzasStmt.all(a, b, c) as unknown as StanzaSentenceRow[];
       const byStanza = new Map<number, string[]>();
+      const chorusByStanza = new Map<number, boolean>();
       for (const r of rows) {
         const row = r as StanzaSentenceRow & Record<string, unknown>;
         const n = Number(row.StanzaNbr ?? row['Stanza.StanzaSequenceNbr'] ?? row.StanzaSequenceNbr);
         if (!Number.isFinite(n)) continue;
-        if (!byStanza.has(n)) byStanza.set(n, []);
+        if (!byStanza.has(n)) {
+          byStanza.set(n, []);
+          chorusByStanza.set(n, Number(row.IsChorus) === 1);
+        }
         byStanza.get(n)!.push(r.Content);
       }
       const order = [...byStanza.keys()].sort((x, y) => x - y);
-      return order.map((k) => byStanza.get(k)!);
+      return {
+        stanzas: order.map((k) => byStanza.get(k)!),
+        isChorus: order.map((k) => chorusByStanza.get(k) ?? false),
+      };
     },
     getChorus(sourceSkid: number, sourceSequenceNbr: number, languageSkid: number): string | null {
       const a = safeInt(sourceSkid), b = safeInt(sourceSequenceNbr), c = safeInt(languageSkid);
