@@ -43,6 +43,7 @@ const defaultKeyDownPayload = {
   lyricsScrollEl: null as HTMLDivElement | null,
   chorusOnlyForVerse: null as number | null,
   currentVerse: 1,
+  totalVerses: 3,
   onChorusOnlyChange: undefined as ((verseNum: number | null) => void) | undefined,
 };
 
@@ -186,6 +187,63 @@ describe('keyboardMachine', () => {
       expect(onNavigate).toHaveBeenCalledWith(0); // verse 1 → first page of stanza 0
     });
 
+    it('clears chorus-only view when jumping to another verse (calls onChorusOnlyChange(null))', () => {
+      const onChorusOnlyChange = jest.fn();
+      const { actor, onNavigate } = createTestActor();
+      keyDown(actor, '2', false, createMockDomEvent(), {
+        totalPages: 6,
+        currentPage: 0,
+        stanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        firstStanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        isChorus: [false, true, false, true, false, true],
+        chorusOnlyForVerse: 1,
+        currentVerse: 1,
+        totalVerses: 3,
+        onChorusOnlyChange,
+      });
+      expect(onChorusOnlyChange).toHaveBeenCalledWith(null);
+      expect(onNavigate).toHaveBeenCalledWith(4);
+    });
+  });
+
+  describe('KEY_DOWN — arrow from chorus-only view', () => {
+    it('ArrowRight exits chorus view and navigates to next verse', () => {
+      const onChorusOnlyChange = jest.fn();
+      const { actor, onNavigate } = createTestActor();
+      keyDown(actor, 'ArrowRight', false, createMockDomEvent(), {
+        totalPages: 6,
+        currentPage: 0,
+        stanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        firstStanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        isChorus: [false, true, false, true, false, true],
+        chorusOnlyForVerse: 1,
+        currentVerse: 1,
+        totalVerses: 3,
+        onChorusOnlyChange,
+      });
+      expect(onChorusOnlyChange).toHaveBeenCalledWith(null);
+      expect(onNavigate).toHaveBeenCalledWith(4); // first page of verse 2
+    });
+    it('ArrowLeft exits chorus view and navigates to previous verse', () => {
+      const onChorusOnlyChange = jest.fn();
+      const { actor, onNavigate } = createTestActor();
+      keyDown(actor, 'ArrowLeft', false, createMockDomEvent(), {
+        totalPages: 6,
+        currentPage: 4,
+        stanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        firstStanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        isChorus: [false, true, false, true, false, true],
+        chorusOnlyForVerse: 2,
+        currentVerse: 2,
+        totalVerses: 3,
+        onChorusOnlyChange,
+      });
+      expect(onChorusOnlyChange).toHaveBeenCalledWith(null);
+      expect(onNavigate).toHaveBeenCalledWith(0); // first page of verse 1
+    });
+  });
+
+  describe('KEY_DOWN — verse jump (digits)', () => {
     it('verse jump: pressing 2 goes to verse 2 (first page of that verse), not chorus (regression)', () => {
       // Digit 2 must jump to the first page of verse 2 (second non-chorus stanza), not to the chorus.
       // Layout: stanza 0 = verse 1 (pages 0,1), stanza 1 = chorus (pages 2,3), stanza 2 = verse 2 (pages 4,5).

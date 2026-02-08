@@ -112,6 +112,8 @@ function SongView() {
   }, []);
 
   const totalVerses = totalVersesFromChorus(isChorus);
+  const totalVersesRef = React.useRef(totalVerses);
+  totalVersesRef.current = totalVerses;
   const currentVerse = currentVerseForPage(currentPage, stanzaIndexByPage, isChorus);
   currentVerseRef.current = currentVerse;
 
@@ -146,6 +148,7 @@ function SongView() {
         onScrollToChorus,
         chorusOnlyForVerse: chorusOnlyForVerseRef.current,
         currentVerse: currentVerseRef.current,
+        totalVerses: totalVersesRef.current,
         onChorusOnlyChange,
       });
     };
@@ -221,6 +224,7 @@ function SongView() {
                 isChorus={isChorus}
                 languageCount={languageCount}
                 lyricsFontSizeIndex={lyricsFontSizeIndex}
+                suppressEndOfSong={effectiveView.isChorusOnlyView}
               />
             </div>
           ) : (

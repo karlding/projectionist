@@ -6,6 +6,7 @@ import {
   currentVerseForPage,
   stanzaIndexForVerse,
   chorusStanzaIndexAfterVerse,
+  nthChorusStanzaIndex,
   getEffectiveLyricsView,
   SENTENCES_PER_LANGUAGE,
   LINES_PER_PAGE_SINGLE_LANGUAGE,
@@ -129,6 +130,12 @@ describe('displayPages', () => {
       const decLastLine = getLineDecoration(0, 1, stanzaIndexByPage, isChorus, 1, 7, 8, 5);
       expect(decLastLine.showEndOfSong).toBe(true);
     });
+    it('returns showEndOfSong false when suppressEndOfSong is true (e.g. chorus-only view)', () => {
+      const stanzaIndexByPage = [0];
+      const isChorus = [false];
+      const dec = getLineDecoration(0, 1, stanzaIndexByPage, isChorus, 1, 0, 1, -1, true);
+      expect(dec.showEndOfSong).toBe(false);
+    });
   });
 
   describe('totalVersesFromChorus', () => {
@@ -167,6 +174,23 @@ describe('displayPages', () => {
       const isChorus = [false, true];
       expect(chorusStanzaIndexAfterVerse(0, isChorus)).toBe(-1);
       expect(chorusStanzaIndexAfterVerse(-1, isChorus)).toBe(-1);
+    });
+  });
+
+  describe('nthChorusStanzaIndex', () => {
+    it('returns 1st chorus for verse 1, 2nd for verse 2', () => {
+      const isChorus = [false, true, false, true, false];
+      expect(nthChorusStanzaIndex(1, isChorus)).toBe(1);
+      expect(nthChorusStanzaIndex(2, isChorus)).toBe(3);
+    });
+    it('returns the only chorus when verse number exceeds chorus count', () => {
+      const isChorus = [false, true, false];
+      expect(nthChorusStanzaIndex(1, isChorus)).toBe(1);
+      expect(nthChorusStanzaIndex(3, isChorus)).toBe(1);
+    });
+    it('returns -1 when no choruses or verse < 1', () => {
+      expect(nthChorusStanzaIndex(1, [false, false])).toBe(-1);
+      expect(nthChorusStanzaIndex(0, [false, true])).toBe(-1);
     });
   });
 
@@ -251,17 +275,17 @@ describe('displayPages', () => {
       expect(view.displayVerseForIndicator).toBe(2);
     });
 
-    it('returns normal view when chorusOnlyForVerse has no following chorus', () => {
-      const isChorusNoC = [false, true, false];
+    it('returns normal view when chorusOnlyForVerse is set but song has no choruses', () => {
+      const isChorusNone = [false, false, false];
       const view = getEffectiveLyricsView({
-        chorusOnlyForVerse: 3,
+        chorusOnlyForVerse: 1,
         currentPage: 0,
         currentVerse: 1,
         displayPages,
         stanzaIndexByPage,
         chorusStartLineIndexByPage,
         stanzas,
-        isChorus: isChorusNoC,
+        isChorus: isChorusNone,
       });
       expect(view.lines).toEqual(['v1a', 'v1b']);
       expect(view.isChorusOnlyView).toBe(false);

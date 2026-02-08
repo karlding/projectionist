@@ -14,6 +14,8 @@ export interface LyricsPageContentProps {
   isChorus: boolean[];
   languageCount: number;
   lyricsFontSizeIndex: number;
+  /** When true, do not show the red end-of-song line (e.g. in chorus-only view). */
+  suppressEndOfSong?: boolean;
 }
 
 function LineWithDecorations({
@@ -56,6 +58,7 @@ export function LyricsPageContent({
   isChorus,
   languageCount,
   lyricsFontSizeIndex,
+  suppressEndOfSong = false,
 }: LyricsPageContentProps) {
   const pageLineCount = lines.length;
   const fontClass = LYRICS_FONT_SIZES[lyricsFontSizeIndex] ?? 'text-base';
@@ -72,7 +75,8 @@ export function LyricsPageContent({
           languageCount,
           i,
           pageLineCount,
-          chorusStartLineIndex
+          chorusStartLineIndex,
+          suppressEndOfSong
         );
         return (
           <LineWithDecorations

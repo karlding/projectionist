@@ -83,7 +83,8 @@ export function getLineDecoration(
   languageCount: number,
   lineIndex: number,
   pageLineCount: number,
-  chorusStartLineIndex: number = -1
+  chorusStartLineIndex: number = -1,
+  suppressEndOfSong: boolean = false
 ): LineDecoration {
   const stanzaIdx = stanzaIndexByPage[currentPage] ?? 0;
   const nextStanzaIsChorus = stanzaIdx + 1 < isChorus.length && isChorus[stanzaIdx + 1];
@@ -96,7 +97,7 @@ export function getLineDecoration(
   const showYellowLine =
     isMergedVerseChorusBoundary ||
     (isVerse && nextStanzaIsChorus && isLastLine && isLastPageOfStanza);
-  const isEndOfSong = currentPage === totalPages - 1 && isLastLine;
+  const isEndOfSong = !suppressEndOfSong && currentPage === totalPages - 1 && isLastLine;
   const showVerseEndLine =
     isVerse && isLastLine && isLastPageOfStanza && !isEndOfSong && !showYellowLine;
   const showLanguageDivider =
@@ -137,6 +138,22 @@ export function chorusStanzaIndexAfterVerse(verseNum: number, isChorus: boolean[
     if (isChorus[s]) return s;
   }
   return -1;
+}
+
+/**
+ * Stanza index of the N-th chorus in the song (1-based). Used for "show chorus for verse N":
+ * verse 1 → 1st chorus, verse 2 → 2nd chorus. If there are fewer choruses than N, returns the last chorus.
+ * Returns -1 if there are no choruses.
+ */
+export function nthChorusStanzaIndex(verseNum: number, isChorus: boolean[]): number {
+  if (verseNum < 1) return -1;
+  const indices: number[] = [];
+  for (let s = 0; s < isChorus.length; s++) {
+    if (isChorus[s]) indices.push(s);
+  }
+  if (indices.length === 0) return -1;
+  const n = Math.min(verseNum, indices.length);
+  return indices[n - 1];
 }
 
 /** Compute current verse number for a given page. */
@@ -191,7 +208,7 @@ export function getEffectiveLyricsView(input: EffectiveLyricsViewInput): Effecti
     isChorus,
   } = input;
   const chorusOnlyStanzaIdx =
-    chorusOnlyForVerse != null ? chorusStanzaIndexAfterVerse(chorusOnlyForVerse, isChorus) : -1;
+    chorusOnlyForVerse != null ? nthChorusStanzaIndex(chorusOnlyForVerse, isChorus) : -1;
   const chorusOnlyLines =
     chorusOnlyStanzaIdx >= 0 && stanzas[chorusOnlyStanzaIdx] ? stanzas[chorusOnlyStanzaIdx] : [];
   const isChorusOnlyView = chorusOnlyForVerse != null && chorusOnlyLines.length > 0;
