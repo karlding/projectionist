@@ -36,14 +36,14 @@ function LineWithDecorations({
         {content}
       </p>
       {decoration.showYellowLine ? (
-        <hr className="border-0 border-t-2 border-yellow-500 my-3 w-full" />
+        <hr className="border-0 border-t-2 border-yellow-500 my-2 w-full" />
       ) : decoration.showVerseEndLine ? (
-        <hr className="border-0 border-t-2 border-gray-300 my-3 w-full" />
+        <hr className="border-0 border-t-2 border-gray-300 my-2 w-full" />
       ) : decoration.showLanguageDivider ? (
-        <hr className="border-0 border-t border-gray-200 my-3 w-full" />
+        <hr className="border-0 border-t border-gray-200 my-2 w-full" />
       ) : null}
       {decoration.showEndOfSong ? (
-        <hr className="border-0 border-t-2 border-red-500 my-3 w-full" />
+        <hr className="border-0 border-t-2 border-red-500 my-2 w-full" />
       ) : null}
     </React.Fragment>
   );
