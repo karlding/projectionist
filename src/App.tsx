@@ -21,6 +21,7 @@ import { SongHeader } from './components/SongHeader';
 import { InitialLoadPage } from './components/InitialLoadPage';
 import { VerseIndicator } from './components/VerseIndicator';
 import { LyricsPageContent } from './components/LyricsPageContent';
+import { useScrollToTopOnPageChange } from './useScrollToTopOnPageChange';
 
 const sourceSkid = 1;
 const DEFAULT_SOURCE_SEQUENCE_NBR = 294;
@@ -125,6 +126,8 @@ function SongView() {
   React.useEffect(() => {
     setChorusOnlyForVerse(null);
   }, [currentPage]);
+
+  useScrollToTopOnPageChange(lyricsScrollRef, currentPage);
 
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
