@@ -44,10 +44,10 @@ function InitialLoadRoute() {
 
 function SongView() {
   const { sourceSequenceNbr: param } = useParams<{ sourceSequenceNbr: string }>();
-  const sourceSequenceNbr = Math.max(
-    0,
-    parseInt(param ?? String(DEFAULT_SOURCE_SEQUENCE_NBR), 10) || DEFAULT_SOURCE_SEQUENCE_NBR
-  );
+  const parsed = parseInt(param ?? '', 10);
+  const sourceSequenceNbr = Number.isNaN(parsed)
+    ? DEFAULT_SOURCE_SEQUENCE_NBR
+    : Math.max(0, parsed);
   const navigate = useNavigate();
 
   const [currentPage, setCurrentPage] = React.useState(0);

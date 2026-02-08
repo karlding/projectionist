@@ -114,7 +114,7 @@ export const keyboardMachine = keyboardSetup.createMachine({
               }
             }
 
-            if (key === '0' && onChorusOnlyChange && chorusOnlyForVerse == null) {
+            if (key === '0' && !ctrlKey && onChorusOnlyChange && chorusOnlyForVerse == null) {
               if (
                 currentVerse >= 1 &&
                 firstStanzaIndexByPage.length > 0 &&
