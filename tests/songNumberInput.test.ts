@@ -44,6 +44,18 @@ describe('songNumberInput', () => {
         preventDefault: false,
       });
     });
+
+    it('caps buffer at 8 digits to avoid precision loss and scientific notation in URLs', () => {
+      const eightDigits = '12345678';
+      expect(handleKeyDown('9', true, eightDigits)).toEqual({
+        buffer: eightDigits,
+        preventDefault: true,
+      });
+      expect(handleKeyDown('1', true, eightDigits)).toEqual({
+        buffer: eightDigits,
+        preventDefault: true,
+      });
+    });
   });
 
   describe('handleKeyUp', () => {
@@ -76,6 +88,13 @@ describe('songNumberInput', () => {
       expect(handleKeyUp('Control', '0294')).toEqual({
         buffer: '',
         sequenceNbr: 294,
+      });
+    });
+
+    it('returns correct integer for 8-digit buffer (no scientific notation)', () => {
+      expect(handleKeyUp('Control', '12345678')).toEqual({
+        buffer: '',
+        sequenceNbr: 12345678,
       });
     });
   });
@@ -150,6 +169,18 @@ describe('songNumberInput', () => {
       // Release Control -> commit
       const up = handleKeyUp('Control', buffer);
       expect(up.sequenceNbr).toBe(294);
+      expect(up.buffer).toBe('');
+    });
+
+    it('stops accepting digits after 8, commit uses only those 8 (avoids huge number -> song 1 bug)', () => {
+      let buffer = '';
+      for (let i = 0; i < 10; i++) {
+        const result = handleKeyDown('1', true, buffer);
+        buffer = result.buffer;
+      }
+      expect(buffer).toBe('11111111');
+      const up = handleKeyUp('Control', buffer);
+      expect(up.sequenceNbr).toBe(11111111);
       expect(up.buffer).toBe('');
     });
   });

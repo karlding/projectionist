@@ -19,6 +19,7 @@ import {
 import { useSongLoader } from './useSongLoader';
 import { SongHeader } from './components/SongHeader';
 import { InitialLoadPage } from './components/InitialLoadPage';
+import { NoSongFoundPage } from './components/NoSongFoundPage';
 import { VerseIndicator } from './components/VerseIndicator';
 import { LyricsPageContent } from './components/LyricsPageContent';
 import { useScrollToTopOnPageChange } from './useScrollToTopOnPageChange';
@@ -120,6 +121,12 @@ function SongView() {
   React.useEffect(() => {
     loadSong(sourceSequenceNbr).then(() => setCurrentPage(0));
   }, [sourceSequenceNbr, loadSong]);
+
+  React.useEffect(() => {
+    if (!loading && !error && stanzas.length === 0) {
+      navigate(`/song/${sourceSequenceNbr}/not-found`, { replace: true });
+    }
+  }, [loading, error, stanzas.length, sourceSequenceNbr, navigate]);
 
   React.useEffect(() => {
     setCurrentPage((p) => clampPage(p, totalPages));
@@ -227,9 +234,7 @@ function SongView() {
                 suppressEndOfSong={effectiveView.isChorusOnlyView}
               />
             </div>
-          ) : (
-            <p className="px-8 py-6 text-gray-500">no song found for this number.</p>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
@@ -241,6 +246,7 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<InitialLoadRoute />} />
+        <Route path="/song/:sourceSequenceNbr/not-found" element={<NoSongFoundPage />} />
         <Route path="/song/:sourceSequenceNbr" element={<SongView />} />
       </Routes>
     </Router>

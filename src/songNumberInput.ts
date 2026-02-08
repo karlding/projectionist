@@ -27,6 +27,9 @@ export interface KeyUpResult {
 
 const DIGIT = /^[0-9]$/;
 
+/** Max digits for Ctrl+number song entry; avoids precision loss and scientific notation in URLs. */
+const MAX_BUFFER_DIGITS = 8;
+
 /**
  * Handle keydown. Call with current buffer; returns updated buffer and whether to preventDefault.
  */
@@ -35,7 +38,9 @@ export function handleKeyDown(key: string, ctrlKey: boolean, buffer: string): Ke
     return { buffer: '', preventDefault: false };
   }
   if (ctrlKey && DIGIT.test(key)) {
-    return { buffer: buffer + key, preventDefault: true };
+    const nextBuffer =
+      buffer.length < MAX_BUFFER_DIGITS ? buffer + key : buffer;
+    return { buffer: nextBuffer, preventDefault: true };
   }
   return { buffer, preventDefault: false };
 }
