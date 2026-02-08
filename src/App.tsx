@@ -176,11 +176,11 @@ function SongView() {
 
   const hasSongData = Boolean(titleLine);
   const header = hasSongData ? (
-    <SongHeader titleLine={titleLine} sourceSequenceNbr={sourceSequenceNbr} />
+    <SongHeader titleLine={titleLine} />
   ) : (
     <header className="flex-shrink-0 sticky top-0 z-10 px-8 pt-6 pb-2 border-b border-gray-200 bg-white">
       <h1 className="text-2xl font-semibold text-center text-gray-500">
-        {sourceSequenceNbr}: Loading…
+        Loading…
       </h1>
     </header>
   );
@@ -195,6 +195,7 @@ function SongView() {
       >
         {showTwoColumns && (
           <VerseIndicator
+            sourceSequenceNbr={sourceSequenceNbr}
             currentVerse={effectiveView.displayVerseForIndicator}
             totalVerses={totalVerses}
             hasChorus={isChorus.some(Boolean)}
