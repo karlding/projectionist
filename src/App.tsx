@@ -14,6 +14,7 @@ import {
   DEFAULT_LYRICS_FONT_SIZE_INDEX,
   totalVersesFromChorus,
   currentVerseForPage,
+  getEffectiveLyricsView,
 } from './displayPages';
 import { useSongLoader } from './useSongLoader';
 import { SongHeader } from './components/SongHeader';
@@ -49,12 +50,15 @@ function SongView() {
   const navigate = useNavigate();
 
   const [currentPage, setCurrentPage] = React.useState(0);
+  const [chorusOnlyForVerse, setChorusOnlyForVerse] = React.useState<number | null>(null);
   const [lyricsFontSizeIndex, setLyricsFontSizeIndex] = React.useState(
     DEFAULT_LYRICS_FONT_SIZE_INDEX
   );
   const lyricsScrollRef = React.useRef<HTMLDivElement>(null);
   const stanzaIndexByPageRef = React.useRef<number[]>([]);
   const isChorusRef = React.useRef<boolean[]>([]);
+  const chorusOnlyForVerseRef = React.useRef<number | null>(null);
+  const currentVerseRef = React.useRef(1);
 
   const {
     titleLine,
@@ -66,6 +70,13 @@ function SongView() {
     loadSong,
   } = useSongLoader(sourceSkid);
 
+  const onChorusOnlyChange = React.useCallback((verseNum: number | null) => {
+    setChorusOnlyForVerse(verseNum);
+    setTimeout(() => {
+      lyricsScrollRef.current?.scrollTo(0, 0);
+    }, 0);
+  }, []);
+
   const [, sendKeyEvent] = useMachine(keyboardMachine, {
     input: {
       onNavigate: setCurrentPage,
@@ -75,9 +86,9 @@ function SongView() {
     },
   });
 
-  const { pages: displayPages, stanzaIndexByPage } = React.useMemo(
-    () => buildDisplayPages(stanzas, languageCount),
-    [stanzas, languageCount]
+  const { pages: displayPages, stanzaIndexByPage, firstStanzaIndexByPage, chorusStartLineIndexByPage } = React.useMemo(
+    () => buildDisplayPages(stanzas, languageCount, isChorus),
+    [stanzas, languageCount, isChorus]
   );
   const totalPages = displayPages.length;
   const totalPagesRef = React.useRef(totalPages);
@@ -85,10 +96,23 @@ function SongView() {
   const currentPageRef = React.useRef(currentPage);
   currentPageRef.current = currentPage;
   stanzaIndexByPageRef.current = stanzaIndexByPage;
+  const firstStanzaIndexByPageRef = React.useRef<number[]>([]);
+  firstStanzaIndexByPageRef.current = firstStanzaIndexByPage;
+  const chorusStartLineIndexByPageRef = React.useRef<number[]>([]);
+  chorusStartLineIndexByPageRef.current = chorusStartLineIndexByPage;
   isChorusRef.current = isChorus;
+  chorusOnlyForVerseRef.current = chorusOnlyForVerse;
+
+  const onScrollToChorus = React.useCallback(() => {
+    setTimeout(() => {
+      const el = lyricsScrollRef.current?.querySelector('[data-chorus-start]');
+      (el as HTMLElement)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }, 0);
+  }, []);
 
   const totalVerses = totalVersesFromChorus(isChorus);
   const currentVerse = currentVerseForPage(currentPage, stanzaIndexByPage, isChorus);
+  currentVerseRef.current = currentVerse;
 
   React.useEffect(() => {
     loadSong(sourceSequenceNbr).then(() => setCurrentPage(0));
@@ -97,6 +121,10 @@ function SongView() {
   React.useEffect(() => {
     setCurrentPage((p) => clampPage(p, totalPages));
   }, [totalPages]);
+
+  React.useEffect(() => {
+    setChorusOnlyForVerse(null);
+  }, [currentPage]);
 
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -108,8 +136,14 @@ function SongView() {
         totalPages: totalPagesRef.current,
         currentPage: currentPageRef.current,
         stanzaIndexByPage: stanzaIndexByPageRef.current,
+        firstStanzaIndexByPage: firstStanzaIndexByPageRef.current,
+        chorusStartLineIndexByPage: chorusStartLineIndexByPageRef.current,
         isChorus: isChorusRef.current,
         lyricsScrollEl: lyricsScrollRef.current,
+        onScrollToChorus,
+        chorusOnlyForVerse: chorusOnlyForVerseRef.current,
+        currentVerse: currentVerseRef.current,
+        onChorusOnlyChange,
       });
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -121,13 +155,21 @@ function SongView() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [sendKeyEvent]);
+  }, [sendKeyEvent, onScrollToChorus, onChorusOnlyChange]);
 
   const showTwoColumns =
     !loading && !error && stanzas.length > 0 && totalVerses > 0;
-  const currentPageLines = Array.isArray(displayPages[currentPage])
-    ? displayPages[currentPage]
-    : [];
+
+  const effectiveView = getEffectiveLyricsView({
+    chorusOnlyForVerse,
+    currentPage,
+    currentVerse,
+    displayPages,
+    stanzaIndexByPage,
+    chorusStartLineIndexByPage,
+    stanzas,
+    isChorus,
+  });
 
   const hasSongData = Boolean(titleLine);
   const header = hasSongData ? (
@@ -150,14 +192,10 @@ function SongView() {
       >
         {showTwoColumns && (
           <VerseIndicator
-            currentVerse={currentVerse}
+            currentVerse={effectiveView.displayVerseForIndicator}
             totalVerses={totalVerses}
             hasChorus={isChorus.some(Boolean)}
-            isChorus={
-              stanzaIndexByPage[currentPage] !== undefined
-                ? isChorus[stanzaIndexByPage[currentPage]]
-                : false
-            }
+            isChorus={effectiveView.isChorusForIndicator}
           />
         )}
         <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
@@ -171,10 +209,11 @@ function SongView() {
               className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-8 pb-6"
             >
               <LyricsPageContent
-                lines={currentPageLines}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                stanzaIndexByPage={stanzaIndexByPage}
+                lines={effectiveView.lines}
+                currentPage={effectiveView.effectiveCurrentPage}
+                totalPages={effectiveView.effectiveTotalPages}
+                stanzaIndexByPage={effectiveView.effectiveStanzaIndexByPage}
+                chorusStartLineIndexByPage={effectiveView.effectiveChorusStartLineIndexByPage}
                 isChorus={isChorus}
                 languageCount={languageCount}
                 lyricsFontSizeIndex={lyricsFontSizeIndex}

@@ -37,8 +37,13 @@ const defaultKeyDownPayload = {
   totalPages: 10,
   currentPage: 0,
   stanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+  firstStanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+  chorusStartLineIndexByPage: [-1, -1, -1, -1, -1, -1],
   isChorus: [false, true, false, true, false, true],
   lyricsScrollEl: null as HTMLDivElement | null,
+  chorusOnlyForVerse: null as number | null,
+  currentVerse: 1,
+  onChorusOnlyChange: undefined as ((verseNum: number | null) => void) | undefined,
 };
 
 function keyDown(
@@ -206,40 +211,70 @@ describe('keyboardMachine', () => {
     });
   });
 
-  describe('KEY_DOWN — chorus jump (0)', () => {
-    it('navigates to chorus page when pressing 0 from a verse', () => {
-      const { actor, onNavigate } = createTestActor();
-      // stanzaIndexByPage: [0, 0, 1, 1, 2, 2], isChorus: [false, true, ...]
-      // page 0 = stanza 0 (verse), next chorus is stanza 1 → page 2
+  describe('KEY_DOWN — chorus only (0)', () => {
+    it('calls onChorusOnlyChange(currentVerse) when pressing 0 from a verse', () => {
+      const onChorusOnlyChange = jest.fn();
+      const { actor } = createTestActor();
       keyDown(actor, '0', false, createMockDomEvent(), {
         totalPages: 6,
         currentPage: 0,
         stanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        firstStanzaIndexByPage: [0, 0, 1, 1, 2, 2],
         isChorus: [false, true, false, true, false, true],
+        chorusOnlyForVerse: null,
+        currentVerse: 1,
+        onChorusOnlyChange,
       });
-      expect(onNavigate).toHaveBeenCalledWith(2);
+      expect(onChorusOnlyChange).toHaveBeenCalledWith(1);
     });
 
-    it('does not navigate on 0 when already on a chorus', () => {
-      const { actor, onNavigate } = createTestActor();
+    it('calls onChorusOnlyChange(2) when pressing 0 from verse 2', () => {
+      const onChorusOnlyChange = jest.fn();
+      const { actor } = createTestActor();
       keyDown(actor, '0', false, createMockDomEvent(), {
         totalPages: 6,
-        currentPage: 1, // stanza 0, which is chorus at index 1
+        currentPage: 4,
         stanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        firstStanzaIndexByPage: [0, 0, 1, 1, 2, 2],
         isChorus: [false, true, false, true, false, true],
+        chorusOnlyForVerse: null,
+        currentVerse: 2,
+        onChorusOnlyChange,
       });
-      // Current stanza is 0, isChorus[0] is false — wait, stanzaIndexByPage[1]=0 so we're on stanza 0.
-      // isChorus[0] = false, so we're in a verse. So we would look for next chorus. Let me use a case
-      // where current page is a chorus: e.g. stanzaIndexByPage[1]=0 and isChorus[0]=true.
-      onNavigate.mockClear();
+      expect(onChorusOnlyChange).toHaveBeenCalledWith(2);
+    });
+
+    it('does not call onChorusOnlyChange when pressing 0 while already in chorus-only view', () => {
+      const onChorusOnlyChange = jest.fn();
+      const { actor } = createTestActor();
+      keyDown(actor, '0', false, createMockDomEvent(), {
+        totalPages: 6,
+        currentPage: 0,
+        stanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        firstStanzaIndexByPage: [0, 0, 1, 1, 2, 2],
+        isChorus: [false, true, false, true, false, true],
+        chorusOnlyForVerse: 1,
+        currentVerse: 1,
+        onChorusOnlyChange,
+      });
+      expect(onChorusOnlyChange).not.toHaveBeenCalled();
+    });
+
+    it('does nothing on 0 when on a chorus page (no verse) and not in chorus-only view', () => {
+      const onChorusOnlyChange = jest.fn();
+      const { actor } = createTestActor();
       keyDown(actor, '0', false, createMockDomEvent(), {
         totalPages: 4,
         currentPage: 1,
         stanzaIndexByPage: [0, 1, 1, 2],
-        isChorus: [true, true, false, true], // stanza 0 and 1 are chorus
+        firstStanzaIndexByPage: [0, 1, 1, 2],
+        isChorus: [false, true, false, true],
+        chorusOnlyForVerse: null,
+        currentVerse: 1,
+        onChorusOnlyChange,
       });
-      // currentStanzaIdx = 1, chorusFlags[1]=true → we're on chorus, so no navigation
-      expect(onNavigate).not.toHaveBeenCalled();
+      // Page 1 has first stanza 1 (chorus), so we're not on a verse page
+      expect(onChorusOnlyChange).not.toHaveBeenCalled();
     });
   });
 

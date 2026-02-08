@@ -5,7 +5,7 @@
 
 import { setup, assign, enqueueActions } from 'xstate';
 import { getPageNavigation, handleKeyDown, handleKeyUp } from './songNumberInput';
-import { totalVersesFromChorus, stanzaIndexForVerse } from './displayPages';
+import { totalVersesFromChorus, stanzaIndexForVerse, chorusStanzaIndexAfterVerse } from './displayPages';
 
 const LYRICS_FONT_SIZES_LENGTH = 6;
 
@@ -29,8 +29,14 @@ export type KeyboardMachineEvent =
       totalPages: number;
       currentPage: number;
       stanzaIndexByPage: number[];
+      firstStanzaIndexByPage: number[];
+      chorusStartLineIndexByPage: number[];
       isChorus: boolean[];
       lyricsScrollEl: HTMLDivElement | null;
+      onScrollToChorus?: () => void;
+      chorusOnlyForVerse: number | null;
+      currentVerse: number;
+      onChorusOnlyChange?: (verseNum: number | null) => void;
     }
   | { type: 'KEY_UP'; key: string };
 
@@ -63,7 +69,7 @@ export const keyboardMachine = keyboardSetup.createMachine({
         KEY_DOWN: {
           actions: enqueueActions(({ context, event, enqueue }) => {
             if (event.type !== 'KEY_DOWN') return;
-            const { key, ctrlKey, domEvent, totalPages, currentPage, stanzaIndexByPage, isChorus, lyricsScrollEl } = event;
+            const { key, ctrlKey, domEvent, totalPages, currentPage, stanzaIndexByPage, firstStanzaIndexByPage, chorusStartLineIndexByPage, isChorus, lyricsScrollEl, onScrollToChorus, chorusOnlyForVerse, currentVerse, onChorusOnlyChange } = event;
             const result = handleKeyDown(key, ctrlKey, context.digitBuffer);
             enqueue.assign({ digitBuffer: result.buffer });
             if (result.preventDefault) domEvent.preventDefault();
@@ -76,13 +82,13 @@ export const keyboardMachine = keyboardSetup.createMachine({
                 context.onNavigate(nav.page);
                 domEvent.preventDefault();
               }
-            } else if (!ctrlKey && stanzaIndexByPage.length > 0 && isChorus.length > 0) {
-              const verse = key === '0' ? 10 : parseInt(key, 10);
+            } else if (key !== '0' && !ctrlKey && firstStanzaIndexByPage.length > 0 && isChorus.length > 0) {
+              const verse = parseInt(key, 10);
               const totalVerses = totalVersesFromChorus(isChorus);
               if (verse >= 1 && verse <= totalVerses) {
                 const stanzaIdx = stanzaIndexForVerse(verse, isChorus);
                 if (stanzaIdx >= 0) {
-                  const targetPage = stanzaIndexByPage.findIndex((s) => s === stanzaIdx);
+                  const targetPage = firstStanzaIndexByPage.findIndex((s) => s === stanzaIdx);
                   if (targetPage >= 0) {
                     context.onNavigate(targetPage);
                     domEvent.preventDefault();
@@ -91,28 +97,16 @@ export const keyboardMachine = keyboardSetup.createMachine({
               }
             }
 
-            if (key === '0') {
-              const byPage = stanzaIndexByPage;
-              const chorusFlags = isChorus;
-              const page = currentPage;
-              if (byPage.length > 0 && page < byPage.length && chorusFlags.length > 0) {
-                const currentStanzaIdx = byPage[page];
-                if (!chorusFlags[currentStanzaIdx]) {
-                  let chorusStanzaIdx = -1;
-                  for (let i = currentStanzaIdx + 1; i < chorusFlags.length; i++) {
-                    if (chorusFlags[i]) {
-                      chorusStanzaIdx = i;
-                      break;
-                    }
-                  }
-                  if (chorusStanzaIdx >= 0) {
-                    const chorusPage = byPage.findIndex((s: number) => s === chorusStanzaIdx);
-                    if (chorusPage >= 0) {
-                      context.onNavigate(chorusPage);
-                      domEvent.preventDefault();
-                    }
-                  }
-                }
+            if (key === '0' && onChorusOnlyChange && chorusOnlyForVerse == null) {
+              if (
+                currentVerse >= 1 &&
+                firstStanzaIndexByPage.length > 0 &&
+                currentPage < firstStanzaIndexByPage.length &&
+                !isChorus[firstStanzaIndexByPage[currentPage]] &&
+                chorusStanzaIndexAfterVerse(currentVerse, isChorus) >= 0
+              ) {
+                onChorusOnlyChange(currentVerse);
+                domEvent.preventDefault();
               }
             }
 
