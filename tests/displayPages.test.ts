@@ -277,7 +277,7 @@ describe("displayPages", () => {
     const isChorus = [false, true, false]; // verse 1, chorus, verse 2
     const firstStanzaIndexByPage = [0, 1, 2]; // page 0 = verse 1, page 1 = chorus, page 2 = verse 2
 
-    it("returns true when not in chorus-only view and current verse has a chorus (verse or chorus page)", () => {
+    it("returns true when not in chorus-only view and current verse has a chorus", () => {
       expect(
         shouldEnterChorusOnlyOnZero(null, 1, firstStanzaIndexByPage, isChorus),
       ).toBe(true);

@@ -50,6 +50,8 @@ const defaultKeyDownPayload = {
   onChorusOnlyChange: undefined as
     | ((verseNum: number | null) => void)
     | undefined,
+  effectiveChorusOnlyTotalPages: 0,
+  effectiveChorusOnlyCurrentPage: 0,
 };
 
 function keyDown(
@@ -231,6 +233,8 @@ describe("keyboardMachine", () => {
         currentVerse: 1,
         totalVerses: 3,
         onChorusOnlyChange,
+        effectiveChorusOnlyTotalPages: 2,
+        effectiveChorusOnlyCurrentPage: 1,
       });
       expect(onChorusOnlyChange).toHaveBeenCalledWith(null);
       expect(onNavigate).toHaveBeenCalledWith(4); // first page of verse 2
@@ -248,6 +252,8 @@ describe("keyboardMachine", () => {
         currentVerse: 2,
         totalVerses: 3,
         onChorusOnlyChange,
+        effectiveChorusOnlyTotalPages: 2,
+        effectiveChorusOnlyCurrentPage: 0,
       });
       expect(onChorusOnlyChange).toHaveBeenCalledWith(null);
       expect(onNavigate).toHaveBeenCalledWith(0); // first page of verse 1
@@ -329,7 +335,7 @@ describe("keyboardMachine", () => {
       expect(onChorusOnlyChange).not.toHaveBeenCalled();
     });
 
-    it("does nothing on 0 when on a chorus page (no verse) and not in chorus-only view", () => {
+    it("calls onChorusOnlyChange when pressing 0 from a chorus page (e.g. last chorus page)", () => {
       const onChorusOnlyChange = jest.fn();
       const { actor } = createTestActor();
       keyDown(actor, "0", false, createMockDomEvent(), {
@@ -342,8 +348,7 @@ describe("keyboardMachine", () => {
         currentVerse: 1,
         onChorusOnlyChange,
       });
-      // Page 1 has first stanza 1 (chorus), so we're not on a verse page
-      expect(onChorusOnlyChange).not.toHaveBeenCalled();
+      expect(onChorusOnlyChange).toHaveBeenCalledWith(1);
     });
   });
 

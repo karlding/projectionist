@@ -221,7 +221,7 @@ export function currentVerseForPage(
 /**
  * Whether pressing "0" should enter chorus-only view for the current verse.
  * True when not already in chorus-only, current verse has a chorus, and we have page data.
- * Works whether the user is currently on a verse page or a chorus page.
+ * Works from any page (verse or chorus) so that e.g. pressing 0 on the last chorus page still enters chorus-only view.
  */
 export function shouldEnterChorusOnlyOnZero(
   chorusOnlyForVerse: number | null,
