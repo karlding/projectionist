@@ -24,11 +24,6 @@ body {
   overflow: hidden;
 }
 
-/* Default lyrics font size (larger than text-base) */
-.lyrics-font-default {
-  font-size: 1.35rem; /* same as text-lg */
-}
-
 /* Hide scrollbar while keeping element scrollable (mouse wheel, arrow keys) */
 .scrollbar-hide {
   scrollbar-width: none;

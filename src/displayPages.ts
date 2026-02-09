@@ -3,8 +3,8 @@ export const SENTENCES_PER_LANGUAGE = 4;
 /** Single-language songs can fit more lines (no alternating language rows). */
 export const LINES_PER_PAGE_SINGLE_LANGUAGE = 8;
 
-/** Lyrics font size steps: '=' increases, '-' decreases. First step is CSS-defined (.lyrics-font-default). */
-export const LYRICS_FONT_SIZES = ['lyrics-font-default', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl', 'text-4xl'];
+/** Lyrics font size steps: '=' increases, '-' decreases. */
+export const LYRICS_FONT_SIZES = ['text-base', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl', 'text-4xl', 'text-5xl', 'text-6xl'];
 export const DEFAULT_LYRICS_FONT_SIZE_INDEX = 0;
 
 export function clampPage(page: number, total: number): number {
