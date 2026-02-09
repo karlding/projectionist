@@ -1,7 +1,7 @@
-import * as React from 'react';
-import { useNavigate, useParams } from 'react-router';
-import { useMachine } from '@xstate/react';
-import { keyboardMachine } from '../keyboardMachine';
+import * as React from "react";
+import { useNavigate, useParams } from "react-router";
+import { useMachine } from "@xstate/react";
+import { keyboardMachine } from "../keyboardMachine";
 
 const emptyPayload = {
   totalPages: 0,
@@ -33,7 +33,7 @@ export function NoSongFoundPage() {
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       sendKeyEvent({
-        type: 'KEY_DOWN',
+        type: "KEY_DOWN",
         key: e.key,
         ctrlKey: e.ctrlKey,
         domEvent: e,
@@ -41,20 +41,21 @@ export function NoSongFoundPage() {
       });
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      sendKeyEvent({ type: 'KEY_UP', key: e.key });
+      sendKeyEvent({ type: "KEY_UP", key: e.key });
     };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
     };
   }, [sendKeyEvent]);
 
   return (
     <div className="h-full w-full flex flex-col items-center justify-center bg-white px-8">
       <p className="text-gray-500">
-        No song found for this number{sourceSequenceNbr ? ` (${sourceSequenceNbr})` : ''}.
+        No song found for this number
+        {sourceSequenceNbr ? ` (${sourceSequenceNbr})` : ""}.
       </p>
     </div>
   );

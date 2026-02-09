@@ -1,4 +1,4 @@
-import * as React from 'react';
+import * as React from "react";
 
 export interface VerseIndicatorProps {
   sourceSequenceNbr: number;
@@ -28,7 +28,7 @@ export function VerseIndicator({
       {hasChorus && (
         <span
           className={`text-gray-400 text-xs text-center block mt-0.5 ${
-            isCurrentPageChorus ? 'font-bold' : 'font-medium'
+            isCurrentPageChorus ? "font-bold" : "font-medium"
           }`}
         >
           C

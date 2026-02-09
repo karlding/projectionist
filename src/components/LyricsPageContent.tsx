@@ -1,9 +1,9 @@
-import * as React from 'react';
+import * as React from "react";
 import {
   getLineDecoration,
   LYRICS_FONT_SIZES,
   type LineDecoration,
-} from '../displayPages';
+} from "../displayPages";
 
 export interface LyricsPageContentProps {
   lines: string[];
@@ -31,7 +31,7 @@ function LineWithDecorations({
     <React.Fragment>
       <p
         className="whitespace-pre-wrap py-0.5"
-        {...(isChorusStart ? { 'data-chorus-start': true } : {})}
+        {...(isChorusStart ? { "data-chorus-start": true } : {})}
       >
         {content}
       </p>
@@ -61,9 +61,10 @@ export function LyricsPageContent({
   suppressEndOfSong = false,
 }: LyricsPageContentProps) {
   const pageLineCount = lines.length;
-  const fontClass = LYRICS_FONT_SIZES[lyricsFontSizeIndex] ?? 'text-base';
+  const fontClass = LYRICS_FONT_SIZES[lyricsFontSizeIndex] ?? "text-base";
   const chorusStartLineIndex = chorusStartLineIndexByPage[currentPage] ?? -1;
-  const nextPageChorusStartIndex = chorusStartLineIndexByPage[currentPage + 1] ?? -1;
+  const nextPageChorusStartIndex =
+    chorusStartLineIndexByPage[currentPage + 1] ?? -1;
 
   return (
     <div className={`text-gray-700 ${fontClass}`}>
@@ -78,14 +79,16 @@ export function LyricsPageContent({
           pageLineCount,
           chorusStartLineIndex,
           suppressEndOfSong,
-          nextPageChorusStartIndex
+          nextPageChorusStartIndex,
         );
         return (
           <LineWithDecorations
             key={i}
             content={content}
             decoration={decoration}
-            isChorusStart={chorusStartLineIndex >= 0 && i === chorusStartLineIndex}
+            isChorusStart={
+              chorusStartLineIndex >= 0 && i === chorusStartLineIndex
+            }
           />
         );
       })}

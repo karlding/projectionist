@@ -4,7 +4,16 @@ export const SENTENCES_PER_LANGUAGE = 4;
 export const LINES_PER_PAGE_SINGLE_LANGUAGE = 8;
 
 /** Lyrics font size steps: '=' increases, '-' decreases. */
-export const LYRICS_FONT_SIZES = ['text-base', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl', 'text-4xl', 'text-5xl', 'text-6xl'];
+export const LYRICS_FONT_SIZES = [
+  "text-base",
+  "text-lg",
+  "text-xl",
+  "text-2xl",
+  "text-3xl",
+  "text-4xl",
+  "text-5xl",
+  "text-6xl",
+];
 export const DEFAULT_LYRICS_FONT_SIZE_INDEX = 0;
 
 export function clampPage(page: number, total: number): number {
@@ -20,7 +29,7 @@ export function clampPage(page: number, total: number): number {
 export function buildDisplayPages(
   stanzas: string[][],
   languageCount: number,
-  isChorus?: boolean[]
+  isChorus?: boolean[],
 ): {
   pages: string[][];
   stanzaIndexByPage: number[];
@@ -28,7 +37,9 @@ export function buildDisplayPages(
   chorusStartLineIndexByPage: number[];
 } {
   const linesPerPage =
-    languageCount <= 1 ? LINES_PER_PAGE_SINGLE_LANGUAGE : SENTENCES_PER_LANGUAGE * languageCount;
+    languageCount <= 1
+      ? LINES_PER_PAGE_SINGLE_LANGUAGE
+      : SENTENCES_PER_LANGUAGE * languageCount;
   const pages: string[][] = [];
   const stanzaIndexByPage: number[] = [];
   const firstStanzaIndexByPage: number[] = [];
@@ -43,7 +54,8 @@ export function buildDisplayPages(
       // Append as many chorus lines as fit on the current page, then add pages for the rest
       const verseLineCount = lastPage.length;
       const take = Math.min(stanza.length, freeOnLastPage);
-      chorusStartLineIndexByPage[chorusStartLineIndexByPage.length - 1] = verseLineCount;
+      chorusStartLineIndexByPage[chorusStartLineIndexByPage.length - 1] =
+        verseLineCount;
       lastPage.push(...stanza.slice(0, take));
       stanzaIndexByPage[stanzaIndexByPage.length - 1] = s;
       const remainder = stanza.slice(take);
@@ -69,7 +81,12 @@ export function buildDisplayPages(
     firstStanzaIndexByPage.push(0);
     chorusStartLineIndexByPage.push(-1);
   }
-  return { pages, stanzaIndexByPage, firstStanzaIndexByPage, chorusStartLineIndexByPage };
+  return {
+    pages,
+    stanzaIndexByPage,
+    firstStanzaIndexByPage,
+    chorusStartLineIndexByPage,
+  };
 }
 
 export interface LineDecoration {
@@ -96,14 +113,16 @@ export function getLineDecoration(
   pageLineCount: number,
   chorusStartLineIndex: number = -1,
   suppressEndOfSong: boolean = false,
-  nextPageChorusStartIndex: number = -1
+  nextPageChorusStartIndex: number = -1,
 ): LineDecoration {
   const stanzaIdx = stanzaIndexByPage[currentPage] ?? 0;
-  const nextStanzaIsChorus = stanzaIdx + 1 < isChorus.length && isChorus[stanzaIdx + 1];
+  const nextStanzaIsChorus =
+    stanzaIdx + 1 < isChorus.length && isChorus[stanzaIdx + 1];
   const isVerse = !isChorus[stanzaIdx];
   const isLastLine = lineIndex === pageLineCount - 1;
   const isLastPageOfStanza =
-    currentPage >= totalPages - 1 || stanzaIndexByPage[currentPage + 1] !== stanzaIdx;
+    currentPage >= totalPages - 1 ||
+    stanzaIndexByPage[currentPage + 1] !== stanzaIdx;
   const isMergedVerseChorusBoundary =
     chorusStartLineIndex >= 0 && lineIndex === chorusStartLineIndex - 1;
   const chorusStartsOnNextPage = nextPageChorusStartIndex >= 0;
@@ -114,9 +133,14 @@ export function getLineDecoration(
       isLastLine &&
       isLastPageOfStanza &&
       !chorusStartsOnNextPage);
-  const isEndOfSong = !suppressEndOfSong && currentPage === totalPages - 1 && isLastLine;
+  const isEndOfSong =
+    !suppressEndOfSong && currentPage === totalPages - 1 && isLastLine;
   const showVerseEndLine =
-    isVerse && isLastLine && isLastPageOfStanza && !isEndOfSong && !showYellowLine;
+    isVerse &&
+    isLastLine &&
+    isLastPageOfStanza &&
+    !isEndOfSong &&
+    !showYellowLine;
   const showLanguageDivider =
     (lineIndex + 1) % languageCount === 0 && !isLastLine;
 
@@ -135,7 +159,10 @@ export function totalVersesFromChorus(isChorus: boolean[]): number {
 }
 
 /** Stanza index for the N-th verse (1-based). Verse = non-chorus stanza. Returns -1 if out of range. */
-export function stanzaIndexForVerse(verseNum: number, isChorus: boolean[]): number {
+export function stanzaIndexForVerse(
+  verseNum: number,
+  isChorus: boolean[],
+): number {
   if (verseNum < 1) return -1;
   let count = 0;
   for (let s = 0; s < isChorus.length; s++) {
@@ -148,7 +175,10 @@ export function stanzaIndexForVerse(verseNum: number, isChorus: boolean[]): numb
 }
 
 /** Stanza index of the chorus that follows the given verse (1-based). Returns -1 if none. */
-export function chorusStanzaIndexAfterVerse(verseNum: number, isChorus: boolean[]): number {
+export function chorusStanzaIndexAfterVerse(
+  verseNum: number,
+  isChorus: boolean[],
+): number {
   const verseStanzaIdx = stanzaIndexForVerse(verseNum, isChorus);
   if (verseStanzaIdx < 0) return -1;
   for (let s = verseStanzaIdx + 1; s < isChorus.length; s++) {
@@ -162,7 +192,10 @@ export function chorusStanzaIndexAfterVerse(verseNum: number, isChorus: boolean[
  * verse 1 → 1st chorus, verse 2 → 2nd chorus. If there are fewer choruses than N, returns the last chorus.
  * Returns -1 if there are no choruses.
  */
-export function nthChorusStanzaIndex(verseNum: number, isChorus: boolean[]): number {
+export function nthChorusStanzaIndex(
+  verseNum: number,
+  isChorus: boolean[],
+): number {
   if (verseNum < 1) return -1;
   const indices: number[] = [];
   for (let s = 0; s < isChorus.length; s++) {
@@ -177,12 +210,12 @@ export function nthChorusStanzaIndex(verseNum: number, isChorus: boolean[]): num
 export function currentVerseForPage(
   currentPage: number,
   stanzaIndexByPage: number[],
-  isChorus: boolean[]
+  isChorus: boolean[],
 ): number {
-  if (stanzaIndexByPage.length === 0 || currentPage >= stanzaIndexByPage.length) return 1;
-  return isChorus
-    .slice(0, stanzaIndexByPage[currentPage] + 1)
-    .filter((c) => !c).length;
+  if (stanzaIndexByPage.length === 0 || currentPage >= stanzaIndexByPage.length)
+    return 1;
+  return isChorus.slice(0, stanzaIndexByPage[currentPage] + 1).filter((c) => !c)
+    .length;
 }
 
 /**
@@ -194,7 +227,7 @@ export function shouldEnterChorusOnlyOnZero(
   chorusOnlyForVerse: number | null,
   currentVerse: number,
   firstStanzaIndexByPage: number[],
-  isChorus: boolean[]
+  isChorus: boolean[],
 ): boolean {
   return (
     chorusOnlyForVerse == null &&
@@ -235,7 +268,9 @@ export interface EffectiveLyricsView {
  * Pure function: given chorus-only state and page data, returns the effective view state
  * (lines to show, page indices, verse indicator values). Used by App and by tests.
  */
-export function getEffectiveLyricsView(input: EffectiveLyricsViewInput): EffectiveLyricsView {
+export function getEffectiveLyricsView(
+  input: EffectiveLyricsViewInput,
+): EffectiveLyricsView {
   const {
     chorusOnlyForVerse,
     chorusOnlyPage = 0,
@@ -251,14 +286,21 @@ export function getEffectiveLyricsView(input: EffectiveLyricsViewInput): Effecti
 
   // Resolve which stanza holds the chorus for the requested verse (when in chorus-only mode).
   const chorusOnlyStanzaIdx =
-    chorusOnlyForVerse != null ? nthChorusStanzaIndex(chorusOnlyForVerse, isChorus) : -1;
+    chorusOnlyForVerse != null
+      ? nthChorusStanzaIndex(chorusOnlyForVerse, isChorus)
+      : -1;
   const chorusOnlyLines =
-    chorusOnlyStanzaIdx >= 0 && stanzas[chorusOnlyStanzaIdx] ? stanzas[chorusOnlyStanzaIdx] : [];
-  const isChorusOnlyView = chorusOnlyForVerse != null && chorusOnlyLines.length > 0;
+    chorusOnlyStanzaIdx >= 0 && stanzas[chorusOnlyStanzaIdx]
+      ? stanzas[chorusOnlyStanzaIdx]
+      : [];
+  const isChorusOnlyView =
+    chorusOnlyForVerse != null && chorusOnlyLines.length > 0;
 
   const totalPages = displayPages.length;
   const linesPerPage =
-    languageCount <= 1 ? LINES_PER_PAGE_SINGLE_LANGUAGE : SENTENCES_PER_LANGUAGE * languageCount;
+    languageCount <= 1
+      ? LINES_PER_PAGE_SINGLE_LANGUAGE
+      : SENTENCES_PER_LANGUAGE * languageCount;
 
   // In chorus-only view, chorus may span multiple pages; compute page count and clamp requested page.
   const chorusOnlyPageCount = isChorusOnlyView
@@ -266,12 +308,12 @@ export function getEffectiveLyricsView(input: EffectiveLyricsViewInput): Effecti
     : 1;
   const clampedChorusPage = Math.max(
     0,
-    Math.min(chorusOnlyPage, chorusOnlyPageCount - 1)
+    Math.min(chorusOnlyPage, chorusOnlyPageCount - 1),
   );
   const chorusPageLines = isChorusOnlyView
     ? chorusOnlyLines.slice(
         clampedChorusPage * linesPerPage,
-        clampedChorusPage * linesPerPage + linesPerPage
+        clampedChorusPage * linesPerPage + linesPerPage,
       )
     : [];
 
@@ -279,15 +321,24 @@ export function getEffectiveLyricsView(input: EffectiveLyricsViewInput): Effecti
   return {
     lines: isChorusOnlyView
       ? chorusPageLines
-      : (Array.isArray(displayPages[currentPage]) ? displayPages[currentPage] : []),
+      : Array.isArray(displayPages[currentPage])
+        ? displayPages[currentPage]
+        : [],
     effectiveCurrentPage: isChorusOnlyView ? clampedChorusPage : currentPage,
     effectiveTotalPages: isChorusOnlyView ? chorusOnlyPageCount : totalPages,
-    effectiveStanzaIndexByPage: isChorusOnlyView ? [chorusOnlyStanzaIdx] : stanzaIndexByPage,
-    effectiveChorusStartLineIndexByPage: isChorusOnlyView ? [-1] : chorusStartLineIndexByPage,
+    effectiveStanzaIndexByPage: isChorusOnlyView
+      ? [chorusOnlyStanzaIdx]
+      : stanzaIndexByPage,
+    effectiveChorusStartLineIndexByPage: isChorusOnlyView
+      ? [-1]
+      : chorusStartLineIndexByPage,
     isChorusOnlyView,
-    displayVerseForIndicator: isChorusOnlyView ? chorusOnlyForVerse! : currentVerse,
+    displayVerseForIndicator: isChorusOnlyView
+      ? chorusOnlyForVerse!
+      : currentVerse,
     isChorusForIndicator:
       isChorusOnlyView ||
-      (stanzaIndexByPage[currentPage] !== undefined && isChorus[stanzaIndexByPage[currentPage]]),
+      (stanzaIndexByPage[currentPage] !== undefined &&
+        isChorus[stanzaIndexByPage[currentPage]]),
   };
 }

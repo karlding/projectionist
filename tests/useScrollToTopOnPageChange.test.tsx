@@ -1,11 +1,12 @@
-import * as React from 'react';
-import { render, screen } from '@testing-library/react';
-import { useScrollToTopOnPageChange } from '../src/useScrollToTopOnPageChange';
+import * as React from "react";
+import { render, screen } from "@testing-library/react";
+import { useScrollToTopOnPageChange } from "../src/useScrollToTopOnPageChange";
 
 // jsdom does not implement scrollTo on elements; add a mock so we can assert it was called
 const scrollToMock = jest.fn();
 beforeAll(() => {
-  (HTMLElement.prototype as { scrollTo?: typeof scrollToMock }).scrollTo = scrollToMock;
+  (HTMLElement.prototype as { scrollTo?: typeof scrollToMock }).scrollTo =
+    scrollToMock;
 });
 beforeEach(() => scrollToMock.mockClear());
 afterAll(() => {
@@ -18,8 +19,8 @@ function TestComponent({ page }: { page: number }) {
   return <div ref={scrollRef} data-testid="scroll-container" />;
 }
 
-describe('useScrollToTopOnPageChange', () => {
-  it('scrolls to top when page changes', () => {
+describe("useScrollToTopOnPageChange", () => {
+  it("scrolls to top when page changes", () => {
     const { rerender } = render(<TestComponent page={0} />);
     scrollToMock.mockClear();
 
@@ -28,7 +29,7 @@ describe('useScrollToTopOnPageChange', () => {
     expect(scrollToMock).toHaveBeenCalledWith(0, 0);
   });
 
-  it('does not call scrollTo when page stays the same', () => {
+  it("does not call scrollTo when page stays the same", () => {
     const { rerender } = render(<TestComponent page={1} />);
     scrollToMock.mockClear();
 

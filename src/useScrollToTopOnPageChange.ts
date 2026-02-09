@@ -1,4 +1,4 @@
-import * as React from 'react';
+import * as React from "react";
 
 /**
  * Scrolls the given element to top whenever the page index changes.
@@ -6,7 +6,7 @@ import * as React from 'react';
  */
 export function useScrollToTopOnPageChange(
   scrollRef: React.RefObject<HTMLElement | null>,
-  page: number
+  page: number,
 ): void {
   React.useEffect(() => {
     scrollRef.current?.scrollTo(0, 0);

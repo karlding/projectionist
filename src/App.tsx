@@ -1,13 +1,13 @@
-import * as React from 'react';
+import * as React from "react";
 import {
   MemoryRouter as Router,
   Routes,
   Route,
   useNavigate,
   useParams,
-} from 'react-router';
-import { useMachine } from '@xstate/react';
-import { keyboardMachine, clampLyricsFontSizeIndex } from './keyboardMachine';
+} from "react-router";
+import { useMachine } from "@xstate/react";
+import { keyboardMachine, clampLyricsFontSizeIndex } from "./keyboardMachine";
 import {
   buildDisplayPages,
   clampPage,
@@ -15,14 +15,14 @@ import {
   totalVersesFromChorus,
   currentVerseForPage,
   getEffectiveLyricsView,
-} from './displayPages';
-import { useSongLoader } from './useSongLoader';
-import { SongHeader } from './components/SongHeader';
-import { InitialLoadPage } from './components/InitialLoadPage';
-import { NoSongFoundPage } from './components/NoSongFoundPage';
-import { VerseIndicator } from './components/VerseIndicator';
-import { LyricsPageContent } from './components/LyricsPageContent';
-import { useScrollToTopOnPageChange } from './useScrollToTopOnPageChange';
+} from "./displayPages";
+import { useSongLoader } from "./useSongLoader";
+import { SongHeader } from "./components/SongHeader";
+import { InitialLoadPage } from "./components/InitialLoadPage";
+import { NoSongFoundPage } from "./components/NoSongFoundPage";
+import { VerseIndicator } from "./components/VerseIndicator";
+import { LyricsPageContent } from "./components/LyricsPageContent";
+import { useScrollToTopOnPageChange } from "./useScrollToTopOnPageChange";
 
 const sourceSkid = 1;
 const DEFAULT_SOURCE_SEQUENCE_NBR = 294;
@@ -38,24 +38,26 @@ function InitialLoadRoute() {
     });
   }, [loadSong, sourceSequenceNbr, navigate]);
 
-  return (
-    <InitialLoadPage loading={loading} error={error ?? undefined} />
-  );
+  return <InitialLoadPage loading={loading} error={error ?? undefined} />;
 }
 
 function SongView() {
-  const { sourceSequenceNbr: param } = useParams<{ sourceSequenceNbr: string }>();
-  const parsed = parseInt(param ?? '', 10);
+  const { sourceSequenceNbr: param } = useParams<{
+    sourceSequenceNbr: string;
+  }>();
+  const parsed = parseInt(param ?? "", 10);
   const sourceSequenceNbr = Number.isNaN(parsed)
     ? DEFAULT_SOURCE_SEQUENCE_NBR
     : Math.max(0, parsed);
   const navigate = useNavigate();
 
   const [currentPage, setCurrentPage] = React.useState(0);
-  const [chorusOnlyForVerse, setChorusOnlyForVerse] = React.useState<number | null>(null);
+  const [chorusOnlyForVerse, setChorusOnlyForVerse] = React.useState<
+    number | null
+  >(null);
   const [chorusOnlyPage, setChorusOnlyPage] = React.useState(0);
   const [lyricsFontSizeIndex, setLyricsFontSizeIndex] = React.useState(
-    DEFAULT_LYRICS_FONT_SIZE_INDEX
+    DEFAULT_LYRICS_FONT_SIZE_INDEX,
   );
   const lyricsScrollRef = React.useRef<HTMLDivElement>(null);
   const stanzaIndexByPageRef = React.useRef<number[]>([]);
@@ -97,9 +99,14 @@ function SongView() {
     },
   });
 
-  const { pages: displayPages, stanzaIndexByPage, firstStanzaIndexByPage, chorusStartLineIndexByPage } = React.useMemo(
+  const {
+    pages: displayPages,
+    stanzaIndexByPage,
+    firstStanzaIndexByPage,
+    chorusStartLineIndexByPage,
+  } = React.useMemo(
     () => buildDisplayPages(stanzas, languageCount, isChorus),
-    [stanzas, languageCount, isChorus]
+    [stanzas, languageCount, isChorus],
   );
   const totalPages = displayPages.length;
   const totalPagesRef = React.useRef(totalPages);
@@ -118,15 +125,22 @@ function SongView() {
 
   const onScrollToChorus = React.useCallback(() => {
     setTimeout(() => {
-      const el = lyricsScrollRef.current?.querySelector('[data-chorus-start]');
-      (el as HTMLElement)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      const el = lyricsScrollRef.current?.querySelector("[data-chorus-start]");
+      (el as HTMLElement)?.scrollIntoView({
+        block: "start",
+        behavior: "smooth",
+      });
     }, 0);
   }, []);
 
   const totalVerses = totalVersesFromChorus(isChorus);
   const totalVersesRef = React.useRef(totalVerses);
   totalVersesRef.current = totalVerses;
-  const currentVerse = currentVerseForPage(currentPage, stanzaIndexByPage, isChorus);
+  const currentVerse = currentVerseForPage(
+    currentPage,
+    stanzaIndexByPage,
+    isChorus,
+  );
   currentVerseRef.current = currentVerse;
 
   React.useEffect(() => {
@@ -152,7 +166,7 @@ function SongView() {
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       sendKeyEvent({
-        type: 'KEY_DOWN',
+        type: "KEY_DOWN",
         key: e.key,
         ctrlKey: e.ctrlKey,
         domEvent: e,
@@ -169,18 +183,19 @@ function SongView() {
         totalVerses: totalVersesRef.current,
         onChorusOnlyChange,
         effectiveChorusOnlyTotalPages: effectiveChorusOnlyTotalPagesRef.current,
-        effectiveChorusOnlyCurrentPage: effectiveChorusOnlyCurrentPageRef.current,
+        effectiveChorusOnlyCurrentPage:
+          effectiveChorusOnlyCurrentPageRef.current,
         onChorusOnlyPageNavigate,
       });
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      sendKeyEvent({ type: 'KEY_UP', key: e.key });
+      sendKeyEvent({ type: "KEY_UP", key: e.key });
     };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
     };
   }, [sendKeyEvent, onScrollToChorus, onChorusOnlyChange]);
 
@@ -222,7 +237,7 @@ function SongView() {
       {header}
       <div
         className={`flex-1 min-h-0 overflow-hidden pt-3 flex ${
-          showTwoColumns ? 'flex-row' : 'flex-col'
+          showTwoColumns ? "flex-row" : "flex-col"
         }`}
       >
         {showTwoColumns && (
@@ -249,7 +264,9 @@ function SongView() {
                 currentPage={effectiveView.effectiveCurrentPage}
                 totalPages={effectiveView.effectiveTotalPages}
                 stanzaIndexByPage={effectiveView.effectiveStanzaIndexByPage}
-                chorusStartLineIndexByPage={effectiveView.effectiveChorusStartLineIndexByPage}
+                chorusStartLineIndexByPage={
+                  effectiveView.effectiveChorusStartLineIndexByPage
+                }
                 isChorus={isChorus}
                 languageCount={languageCount}
                 lyricsFontSizeIndex={lyricsFontSizeIndex}
@@ -268,7 +285,10 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<InitialLoadRoute />} />
-        <Route path="/song/:sourceSequenceNbr/not-found" element={<NoSongFoundPage />} />
+        <Route
+          path="/song/:sourceSequenceNbr/not-found"
+          element={<NoSongFoundPage />}
+        />
         <Route path="/song/:sourceSequenceNbr" element={<SongView />} />
       </Routes>
     </Router>

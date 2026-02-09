@@ -33,9 +33,13 @@ const MAX_BUFFER_DIGITS = 8;
 /**
  * Handle keydown. Call with current buffer; returns updated buffer and whether to preventDefault.
  */
-export function handleKeyDown(key: string, ctrlKey: boolean, buffer: string): KeyDownResult {
-  if (key === 'Control') {
-    return { buffer: '', preventDefault: false };
+export function handleKeyDown(
+  key: string,
+  ctrlKey: boolean,
+  buffer: string,
+): KeyDownResult {
+  if (key === "Control") {
+    return { buffer: "", preventDefault: false };
   }
   if (ctrlKey && DIGIT.test(key)) {
     const nextBuffer =
@@ -49,15 +53,15 @@ export function handleKeyDown(key: string, ctrlKey: boolean, buffer: string): Ke
  * Handle keyup. Call with current buffer; returns updated buffer and sequence number to load (if any).
  */
 export function handleKeyUp(key: string, buffer: string): KeyUpResult {
-  if (key !== 'Control') {
+  if (key !== "Control") {
     return { buffer, sequenceNbr: null };
   }
   if (buffer.length === 0) {
-    return { buffer: '', sequenceNbr: null };
+    return { buffer: "", sequenceNbr: null };
   }
   const n = parseInt(buffer, 10);
   return {
-    buffer: '',
+    buffer: "",
     sequenceNbr: Number.isNaN(n) ? null : n,
   };
 }
@@ -75,13 +79,19 @@ export function getPageNavigation(
   key: string,
   ctrlKey: boolean,
   totalPages: number,
-  currentPage: number
+  currentPage: number,
 ): PageNavigationResult | null {
-  if (key === 'ArrowRight' || key === 'PageDown') {
-    return { page: clampPage(currentPage + 1, totalPages), preventDefault: true };
+  if (key === "ArrowRight" || key === "PageDown") {
+    return {
+      page: clampPage(currentPage + 1, totalPages),
+      preventDefault: true,
+    };
   }
-  if (key === 'ArrowLeft' || key === 'PageUp') {
-    return { page: clampPage(currentPage - 1, totalPages), preventDefault: true };
+  if (key === "ArrowLeft" || key === "PageUp") {
+    return {
+      page: clampPage(currentPage - 1, totalPages),
+      preventDefault: true,
+    };
   }
   // Digit-based verse jump is handled in the keyboard machine using stanzaIndexByPage.
   return null;

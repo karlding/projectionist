@@ -2,16 +2,21 @@
  * Song domain model: identity (source + sequence) and loaded content from Queries.
  */
 
-import type { SongData as SongDataFromQueries } from './Queries';
+import type { SongData as SongDataFromQueries } from "./Queries";
 
-export type { SongData, TitleByLanguageSkid } from './Queries';
+export type { SongData, TitleByLanguageSkid } from "./Queries";
 
 export interface SongQueries {
-  getSongData(sourceSkid: number, sourceSequenceNbr: number): SongDataFromQueries;
+  getSongData(
+    sourceSkid: number,
+    sourceSequenceNbr: number,
+  ): SongDataFromQueries;
 }
 
 /** Flat lines per section for display (sentence x lang interleaved). */
-function sectionsToStanzas(sections: SongDataFromQueries['sections']): string[][] {
+function sectionsToStanzas(
+  sections: SongDataFromQueries["sections"],
+): string[][] {
   return sections.map((section) => section.flatMap((row) => row));
 }
 
@@ -19,7 +24,7 @@ export class Song {
   readonly sourceSkid: number;
   readonly sourceSequenceNbr: number;
   /** Title text keyed by language skid. */
-  readonly titleByLanguageSkid: SongDataFromQueries['titleByLanguageSkid'];
+  readonly titleByLanguageSkid: SongDataFromQueries["titleByLanguageSkid"];
   readonly stanzas: string[][];
   readonly isChorus: boolean[];
   readonly languageSkid: number[];
@@ -39,8 +44,10 @@ export class Song {
   getTitle(languageSkid: number): string {
     return (
       this.titleByLanguageSkid[languageSkid] ??
-      (this.languageSkid.length > 0 ? this.titleByLanguageSkid[this.languageSkid[0]] : undefined) ??
-      ''
+      (this.languageSkid.length > 0
+        ? this.titleByLanguageSkid[this.languageSkid[0]]
+        : undefined) ??
+      ""
     );
   }
 
@@ -48,7 +55,7 @@ export class Song {
   static fromQueries(
     queries: SongQueries,
     sourceSkid: number,
-    sourceSequenceNbr: number
+    sourceSequenceNbr: number,
   ): Song {
     const data = queries.getSongData(sourceSkid, sourceSequenceNbr);
     return new Song(data);
@@ -61,7 +68,9 @@ export class Song {
 
   /** Display title: first language in order, or empty string. */
   get displayTitle(): string {
-    return this.languageSkid.length > 0 ? this.getTitle(this.languageSkid[0]) : '';
+    return this.languageSkid.length > 0
+      ? this.getTitle(this.languageSkid[0])
+      : "";
   }
 
   /** All titles in language order joined (e.g. for bilingual header). */
@@ -69,6 +78,6 @@ export class Song {
     return this.languageSkid
       .map((skid) => this.titleByLanguageSkid[skid])
       .filter(Boolean)
-      .join(' / ');
+      .join(" / ");
   }
 }

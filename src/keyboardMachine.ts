@@ -3,10 +3,18 @@
  * page/verse navigation, chorus jump (0), lyrics font size (+/-), and lyrics scroll (arrows).
  */
 
-import { setup, assign, enqueueActions } from 'xstate';
-import { getPageNavigation, handleKeyDown, handleKeyUp } from './songNumberInput';
-import { totalVersesFromChorus, stanzaIndexForVerse, shouldEnterChorusOnlyOnZero } from './displayPages';
-import { getChorusOnlyNavigation } from './chorusOnlyNavigation';
+import { setup, assign, enqueueActions } from "xstate";
+import {
+  getPageNavigation,
+  handleKeyDown,
+  handleKeyUp,
+} from "./songNumberInput";
+import {
+  totalVersesFromChorus,
+  stanzaIndexForVerse,
+  shouldEnterChorusOnlyOnZero,
+} from "./displayPages";
+import { getChorusOnlyNavigation } from "./chorusOnlyNavigation";
 
 const LYRICS_FONT_SIZES_LENGTH = 6;
 
@@ -29,7 +37,7 @@ export interface KeyboardMachineInput {
 
 export type KeyboardMachineEvent =
   | {
-      type: 'KEY_DOWN';
+      type: "KEY_DOWN";
       key: string;
       ctrlKey: boolean;
       domEvent: KeyboardEvent;
@@ -49,7 +57,7 @@ export type KeyboardMachineEvent =
       effectiveChorusOnlyCurrentPage: number;
       onChorusOnlyPageNavigate?: (page: number) => void;
     }
-  | { type: 'KEY_UP'; key: string };
+  | { type: "KEY_UP"; key: string };
 
 type Context = {
   digitBuffer: string;
@@ -68,19 +76,38 @@ const keyboardSetup = setup({
 
 export const keyboardMachine = keyboardSetup.createMachine({
   context: ({ input }) => ({
-    digitBuffer: '',
+    digitBuffer: "",
     onNavigate: input.onNavigate,
     onFontSizeDelta: input.onFontSizeDelta,
     onLoadSong: input.onLoadSong,
   }),
-  initial: 'listening',
+  initial: "listening",
   states: {
     listening: {
       on: {
         KEY_DOWN: {
           actions: enqueueActions(({ context, event, enqueue }) => {
-            if (event.type !== 'KEY_DOWN') return;
-            const { key, ctrlKey, domEvent, totalPages, currentPage, stanzaIndexByPage, firstStanzaIndexByPage, chorusStartLineIndexByPage, isChorus, lyricsScrollEl, onScrollToChorus, chorusOnlyForVerse, currentVerse, totalVerses, onChorusOnlyChange, effectiveChorusOnlyTotalPages, effectiveChorusOnlyCurrentPage, onChorusOnlyPageNavigate } = event;
+            if (event.type !== "KEY_DOWN") return;
+            const {
+              key,
+              ctrlKey,
+              domEvent,
+              totalPages,
+              currentPage,
+              stanzaIndexByPage,
+              firstStanzaIndexByPage,
+              chorusStartLineIndexByPage,
+              isChorus,
+              lyricsScrollEl,
+              onScrollToChorus,
+              chorusOnlyForVerse,
+              currentVerse,
+              totalVerses,
+              onChorusOnlyChange,
+              effectiveChorusOnlyTotalPages,
+              effectiveChorusOnlyCurrentPage,
+              onChorusOnlyPageNavigate,
+            } = event;
             const result = handleKeyDown(key, ctrlKey, context.digitBuffer);
             enqueue.assign({ digitBuffer: result.buffer });
             if (result.preventDefault) domEvent.preventDefault();
@@ -96,11 +123,11 @@ export const keyboardMachine = keyboardSetup.createMachine({
                 effectiveChorusOnlyCurrentPage,
                 totalVerses,
                 firstStanzaIndexByPage,
-                isChorus
+                isChorus,
               );
               if (chorusNav) {
                 domEvent.preventDefault();
-                if (chorusNav.type === 'exit_to_verse') {
+                if (chorusNav.type === "exit_to_verse") {
                   if (chorusNav.targetPage >= 0) {
                     onChorusOnlyChange?.(null);
                     context.onNavigate(chorusNav.targetPage);
@@ -110,19 +137,31 @@ export const keyboardMachine = keyboardSetup.createMachine({
                   onChorusOnlyPageNavigate?.(chorusNav.page);
                 }
               } else {
-                const nav = getPageNavigation(key, ctrlKey, totalPages, currentPage);
+                const nav = getPageNavigation(
+                  key,
+                  ctrlKey,
+                  totalPages,
+                  currentPage,
+                );
                 if (nav) {
                   context.onNavigate(nav.page);
                   domEvent.preventDefault();
                 }
               }
-            } else if (key !== '0' && !ctrlKey && firstStanzaIndexByPage.length > 0 && isChorus.length > 0) {
+            } else if (
+              key !== "0" &&
+              !ctrlKey &&
+              firstStanzaIndexByPage.length > 0 &&
+              isChorus.length > 0
+            ) {
               const verse = parseInt(key, 10);
               const totalVerses = totalVersesFromChorus(isChorus);
               if (verse >= 1 && verse <= totalVerses) {
                 const stanzaIdx = stanzaIndexForVerse(verse, isChorus);
                 if (stanzaIdx >= 0) {
-                  const targetPage = firstStanzaIndexByPage.findIndex((s) => s === stanzaIdx);
+                  const targetPage = firstStanzaIndexByPage.findIndex(
+                    (s) => s === stanzaIdx,
+                  );
                   if (targetPage >= 0) {
                     onChorusOnlyChange?.(null);
                     context.onNavigate(targetPage);
@@ -133,37 +172,44 @@ export const keyboardMachine = keyboardSetup.createMachine({
             }
 
             if (
-              key === '0' &&
+              key === "0" &&
               !ctrlKey &&
               onChorusOnlyChange &&
-              shouldEnterChorusOnlyOnZero(chorusOnlyForVerse, currentVerse, firstStanzaIndexByPage, isChorus)
+              shouldEnterChorusOnlyOnZero(
+                chorusOnlyForVerse,
+                currentVerse,
+                firstStanzaIndexByPage,
+                isChorus,
+              )
             ) {
               onChorusOnlyChange(currentVerse);
               domEvent.preventDefault();
             }
 
-            if (key === '=' || key === '+') {
+            if (key === "=" || key === "+") {
               context.onFontSizeDelta(1);
               domEvent.preventDefault();
-            } else if (key === '-') {
+            } else if (key === "-") {
               context.onFontSizeDelta(-1);
               domEvent.preventDefault();
             }
 
-            if (lyricsScrollEl && (key === 'ArrowUp' || key === 'ArrowDown')) {
+            if (lyricsScrollEl && (key === "ArrowUp" || key === "ArrowDown")) {
               const step = 56;
               const before = lyricsScrollEl.scrollTop;
-              lyricsScrollEl.scrollTop += key === 'ArrowDown' ? step : -step;
-              if (lyricsScrollEl.scrollTop !== before) domEvent.preventDefault();
+              lyricsScrollEl.scrollTop += key === "ArrowDown" ? step : -step;
+              if (lyricsScrollEl.scrollTop !== before)
+                domEvent.preventDefault();
             }
           }),
         },
         KEY_UP: {
           actions: assign({
             digitBuffer: ({ context, event }) => {
-              if (event.type !== 'KEY_UP') return context.digitBuffer;
+              if (event.type !== "KEY_UP") return context.digitBuffer;
               const result = handleKeyUp(event.key, context.digitBuffer);
-              if (result.sequenceNbr !== null) context.onLoadSong(result.sequenceNbr);
+              if (result.sequenceNbr !== null)
+                context.onLoadSong(result.sequenceNbr);
               return result.buffer;
             },
           }),

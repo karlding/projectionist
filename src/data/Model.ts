@@ -1,4 +1,4 @@
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync } from "node:sqlite";
 
 export type Database = InstanceType<typeof DatabaseSync>;
 
