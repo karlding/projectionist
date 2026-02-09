@@ -5,7 +5,7 @@
 
 import { setup, assign, enqueueActions } from 'xstate';
 import { getPageNavigation, handleKeyDown, handleKeyUp } from './songNumberInput';
-import { totalVersesFromChorus, stanzaIndexForVerse, nthChorusStanzaIndex, shouldEnterChorusOnlyOnZero } from './displayPages';
+import { totalVersesFromChorus, stanzaIndexForVerse, shouldEnterChorusOnlyOnZero } from './displayPages';
 import { getChorusOnlyNavigation } from './chorusOnlyNavigation';
 
 const LYRICS_FONT_SIZES_LENGTH = 6;

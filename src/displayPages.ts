@@ -248,14 +248,19 @@ export function getEffectiveLyricsView(input: EffectiveLyricsViewInput): Effecti
     isChorus,
     languageCount,
   } = input;
+
+  // Resolve which stanza holds the chorus for the requested verse (when in chorus-only mode).
   const chorusOnlyStanzaIdx =
     chorusOnlyForVerse != null ? nthChorusStanzaIndex(chorusOnlyForVerse, isChorus) : -1;
   const chorusOnlyLines =
     chorusOnlyStanzaIdx >= 0 && stanzas[chorusOnlyStanzaIdx] ? stanzas[chorusOnlyStanzaIdx] : [];
   const isChorusOnlyView = chorusOnlyForVerse != null && chorusOnlyLines.length > 0;
+
   const totalPages = displayPages.length;
   const linesPerPage =
     languageCount <= 1 ? LINES_PER_PAGE_SINGLE_LANGUAGE : SENTENCES_PER_LANGUAGE * languageCount;
+
+  // In chorus-only view, chorus may span multiple pages; compute page count and clamp requested page.
   const chorusOnlyPageCount = isChorusOnlyView
     ? Math.max(1, Math.ceil(chorusOnlyLines.length / linesPerPage))
     : 1;
@@ -269,6 +274,8 @@ export function getEffectiveLyricsView(input: EffectiveLyricsViewInput): Effecti
         clampedChorusPage * linesPerPage + linesPerPage
       )
     : [];
+
+  // Return view state: either chorus-only (single stanza, possibly paginated) or normal full-song pages.
   return {
     lines: isChorusOnlyView
       ? chorusPageLines
