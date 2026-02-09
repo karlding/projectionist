@@ -5,10 +5,17 @@
 
 import { setup, assign, enqueueActions } from 'xstate';
 import { getPageNavigation, handleKeyDown, handleKeyUp } from './songNumberInput';
-import { totalVersesFromChorus, stanzaIndexForVerse, nthChorusStanzaIndex } from './displayPages';
+import { totalVersesFromChorus, stanzaIndexForVerse, nthChorusStanzaIndex, shouldEnterChorusOnlyOnZero } from './displayPages';
+import { getChorusOnlyNavigation } from './chorusOnlyNavigation';
 
 const LYRICS_FONT_SIZES_LENGTH = 6;
 
+/**
+ * Clamp the page number to be within the valid range [0, total - 1].
+ * @param page - The current page index (may be out of bounds).
+ * @param total - The total number of pages.
+ * @returns The clamped page index.
+ */
 function clampPage(page: number, total: number): number {
   if (total <= 0) return 0;
   return Math.max(0, Math.min(page, total - 1));
@@ -38,6 +45,9 @@ export type KeyboardMachineEvent =
       currentVerse: number;
       totalVerses: number;
       onChorusOnlyChange?: (verseNum: number | null) => void;
+      effectiveChorusOnlyTotalPages: number;
+      effectiveChorusOnlyCurrentPage: number;
+      onChorusOnlyPageNavigate?: (page: number) => void;
     }
   | { type: 'KEY_UP'; key: string };
 
@@ -70,26 +80,34 @@ export const keyboardMachine = keyboardSetup.createMachine({
         KEY_DOWN: {
           actions: enqueueActions(({ context, event, enqueue }) => {
             if (event.type !== 'KEY_DOWN') return;
-            const { key, ctrlKey, domEvent, totalPages, currentPage, stanzaIndexByPage, firstStanzaIndexByPage, chorusStartLineIndexByPage, isChorus, lyricsScrollEl, onScrollToChorus, chorusOnlyForVerse, currentVerse, totalVerses, onChorusOnlyChange } = event;
+            const { key, ctrlKey, domEvent, totalPages, currentPage, stanzaIndexByPage, firstStanzaIndexByPage, chorusStartLineIndexByPage, isChorus, lyricsScrollEl, onScrollToChorus, chorusOnlyForVerse, currentVerse, totalVerses, onChorusOnlyChange, effectiveChorusOnlyTotalPages, effectiveChorusOnlyCurrentPage, onChorusOnlyPageNavigate } = event;
             const result = handleKeyDown(key, ctrlKey, context.digitBuffer);
             enqueue.assign({ digitBuffer: result.buffer });
             if (result.preventDefault) domEvent.preventDefault();
 
-            // Arrow/PageUp/Down: in chorus-only view, arrows go to next/previous verse; else use getPageNavigation.
+            // Arrow/PageUp/Down: in chorus-only view use getChorusOnlyNavigation; else normal navigation.
             const isDigit = /^[0-9]$/.test(key);
             if (!isDigit) {
-              if (chorusOnlyForVerse != null && onChorusOnlyChange && (key === 'ArrowRight' || key === 'ArrowLeft')) {
-                onChorusOnlyChange(null);
-                const nextVerse = key === 'ArrowRight' ? chorusOnlyForVerse + 1 : chorusOnlyForVerse - 1;
-                if (nextVerse >= 1 && nextVerse <= totalVerses && firstStanzaIndexByPage.length > 0) {
-                  const stanzaIdx = stanzaIndexForVerse(nextVerse, isChorus);
-                  if (stanzaIdx >= 0) {
-                    const targetPage = firstStanzaIndexByPage.findIndex((s) => s === stanzaIdx);
-                    if (targetPage >= 0) {
-                      context.onNavigate(targetPage);
-                      domEvent.preventDefault();
-                    }
+              const chorusNav = getChorusOnlyNavigation(
+                key,
+                ctrlKey,
+                chorusOnlyForVerse,
+                effectiveChorusOnlyTotalPages,
+                effectiveChorusOnlyCurrentPage,
+                totalVerses,
+                firstStanzaIndexByPage,
+                isChorus
+              );
+              if (chorusNav) {
+                domEvent.preventDefault();
+                if (chorusNav.type === 'exit_to_verse') {
+                  if (chorusNav.targetPage >= 0) {
+                    onChorusOnlyChange?.(null);
+                    context.onNavigate(chorusNav.targetPage);
                   }
+                  // targetPage -1: no next/prev verse; stay in chorus view, key consumed
+                } else {
+                  onChorusOnlyPageNavigate?.(chorusNav.page);
                 }
               } else {
                 const nav = getPageNavigation(key, ctrlKey, totalPages, currentPage);
@@ -114,17 +132,14 @@ export const keyboardMachine = keyboardSetup.createMachine({
               }
             }
 
-            if (key === '0' && !ctrlKey && onChorusOnlyChange && chorusOnlyForVerse == null) {
-              if (
-                currentVerse >= 1 &&
-                firstStanzaIndexByPage.length > 0 &&
-                currentPage < firstStanzaIndexByPage.length &&
-                !isChorus[firstStanzaIndexByPage[currentPage]] &&
-                nthChorusStanzaIndex(currentVerse, isChorus) >= 0
-              ) {
-                onChorusOnlyChange(currentVerse);
-                domEvent.preventDefault();
-              }
+            if (
+              key === '0' &&
+              !ctrlKey &&
+              onChorusOnlyChange &&
+              shouldEnterChorusOnlyOnZero(chorusOnlyForVerse, currentVerse, firstStanzaIndexByPage, isChorus)
+            ) {
+              onChorusOnlyChange(currentVerse);
+              domEvent.preventDefault();
             }
 
             if (key === '=' || key === '+') {

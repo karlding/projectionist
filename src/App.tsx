@@ -53,6 +53,7 @@ function SongView() {
 
   const [currentPage, setCurrentPage] = React.useState(0);
   const [chorusOnlyForVerse, setChorusOnlyForVerse] = React.useState<number | null>(null);
+  const [chorusOnlyPage, setChorusOnlyPage] = React.useState(0);
   const [lyricsFontSizeIndex, setLyricsFontSizeIndex] = React.useState(
     DEFAULT_LYRICS_FONT_SIZE_INDEX
   );
@@ -74,6 +75,14 @@ function SongView() {
 
   const onChorusOnlyChange = React.useCallback((verseNum: number | null) => {
     setChorusOnlyForVerse(verseNum);
+    if (verseNum != null) setChorusOnlyPage(0);
+    setTimeout(() => {
+      lyricsScrollRef.current?.scrollTo(0, 0);
+    }, 0);
+  }, []);
+
+  const onChorusOnlyPageNavigate = React.useCallback((page: number) => {
+    setChorusOnlyPage(page);
     setTimeout(() => {
       lyricsScrollRef.current?.scrollTo(0, 0);
     }, 0);
@@ -104,6 +113,8 @@ function SongView() {
   chorusStartLineIndexByPageRef.current = chorusStartLineIndexByPage;
   isChorusRef.current = isChorus;
   chorusOnlyForVerseRef.current = chorusOnlyForVerse;
+  const effectiveChorusOnlyTotalPagesRef = React.useRef(0);
+  const effectiveChorusOnlyCurrentPageRef = React.useRef(0);
 
   const onScrollToChorus = React.useCallback(() => {
     setTimeout(() => {
@@ -157,6 +168,9 @@ function SongView() {
         currentVerse: currentVerseRef.current,
         totalVerses: totalVersesRef.current,
         onChorusOnlyChange,
+        effectiveChorusOnlyTotalPages: effectiveChorusOnlyTotalPagesRef.current,
+        effectiveChorusOnlyCurrentPage: effectiveChorusOnlyCurrentPageRef.current,
+        onChorusOnlyPageNavigate,
       });
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -175,6 +189,7 @@ function SongView() {
 
   const effectiveView = getEffectiveLyricsView({
     chorusOnlyForVerse,
+    chorusOnlyPage,
     currentPage,
     currentVerse,
     displayPages,
@@ -182,7 +197,14 @@ function SongView() {
     chorusStartLineIndexByPage,
     stanzas,
     isChorus,
+    languageCount,
   });
+  effectiveChorusOnlyTotalPagesRef.current = effectiveView.isChorusOnlyView
+    ? effectiveView.effectiveTotalPages
+    : 0;
+  effectiveChorusOnlyCurrentPageRef.current = effectiveView.isChorusOnlyView
+    ? effectiveView.effectiveCurrentPage
+    : 0;
 
   const hasSongData = Boolean(titleLine);
   const header = hasSongData ? (

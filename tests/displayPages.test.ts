@@ -7,6 +7,7 @@ import {
   stanzaIndexForVerse,
   chorusStanzaIndexAfterVerse,
   nthChorusStanzaIndex,
+  shouldEnterChorusOnlyOnZero,
   getEffectiveLyricsView,
   SENTENCES_PER_LANGUAGE,
   LINES_PER_PAGE_SINGLE_LANGUAGE,
@@ -50,7 +51,7 @@ describe('displayPages', () => {
       expect(stanzaIndexByPage).toEqual([0, 0]);
     });
     it('appends chorus to current page when it fits (single language)', () => {
-      // Verse: 6 lines → one full page (8) would have 2 left; use 5 lines so 3 remain
+      // Verse: 5 lines leaves 3 on 8-line page; chorus 3 lines fits
       const verse = Array.from({ length: 5 }, (_, i) => `v${i}`);
       const chorus = Array.from({ length: 3 }, (_, i) => `c${i}`);
       const { pages, stanzaIndexByPage, firstStanzaIndexByPage, chorusStartLineIndexByPage } = buildDisplayPages(
@@ -80,22 +81,24 @@ describe('displayPages', () => {
       expect(chorusStartLineIndexByPage).toEqual([-1, -1]);
     });
 
-    it('starts new page for chorus when it does not fit', () => {
+    it('appends as many chorus lines as fit then continues on next page', () => {
+      // Verse 6 lines → page 1 has 2 free; chorus 5 lines: 2 on page 1, 3 on page 2
       const verse = Array.from({ length: 6 }, (_, i) => `v${i}`);
-      const chorus = Array.from({ length: 5 }, (_, i) => `c${i}`); // 5 > (8-6)=2
+      const chorus = Array.from({ length: 5 }, (_, i) => `c${i}`);
       const { pages, stanzaIndexByPage, firstStanzaIndexByPage, chorusStartLineIndexByPage } = buildDisplayPages(
         [verse, chorus],
         1,
         [false, true]
       );
       expect(pages.length).toBe(2);
-      expect(pages[0].length).toBe(6);
-      expect(pages[0]).toEqual(verse);
-      expect(pages[1].length).toBe(5);
-      expect(pages[1]).toEqual(chorus);
-      expect(stanzaIndexByPage).toEqual([0, 1]);
+      expect(pages[0].length).toBe(8);
+      expect(pages[0].slice(0, 6)).toEqual(verse);
+      expect(pages[0].slice(6, 8)).toEqual(chorus.slice(0, 2));
+      expect(pages[1].length).toBe(3);
+      expect(pages[1]).toEqual(chorus.slice(2, 5));
+      expect(stanzaIndexByPage).toEqual([1, 1]);
       expect(firstStanzaIndexByPage).toEqual([0, 1]);
-      expect(chorusStartLineIndexByPage).toEqual([-1, -1]); // no merge
+      expect(chorusStartLineIndexByPage).toEqual([6, -1]);
     });
   });
 
@@ -123,6 +126,17 @@ describe('displayPages', () => {
       expect(decAfterVerse.showYellowLine).toBe(true); // line index 4 is last verse line
       const decChorusLine = getLineDecoration(0, 1, stanzaIndexByPage, isChorus, 1, 5, 8, 5);
       expect(decChorusLine.showYellowLine).toBe(false);
+    });
+    it('does not show yellow at end of verse page when next page has merged verse+chorus', () => {
+      // Page 0: verse only (8 lines). Page 1: 4 verse + 4 chorus (merged). Yellow only on page 1 at boundary.
+      const stanzaIndexByPage = [0, 1];
+      const isChorus = [false, true];
+      const decEndOfPage0 = getLineDecoration(
+        0, 2, stanzaIndexByPage, isChorus, 1, 7, 8, -1, false, 4 /* next page has chorus at line 4 */
+      );
+      expect(decEndOfPage0.showYellowLine).toBe(false);
+      const decBoundaryPage1 = getLineDecoration(1, 2, stanzaIndexByPage, isChorus, 1, 3, 8, 4);
+      expect(decBoundaryPage1.showYellowLine).toBe(true);
     });
     it('returns showEndOfSong on last line of merged page when it is the last page', () => {
       const stanzaIndexByPage = [1];
@@ -208,6 +222,40 @@ describe('displayPages', () => {
     });
   });
 
+  describe('shouldEnterChorusOnlyOnZero', () => {
+    const isChorus = [false, true, false]; // verse 1, chorus, verse 2
+    const firstStanzaIndexByPage = [0, 1, 2]; // page 0 = verse 1, page 1 = chorus, page 2 = verse 2
+
+    it('returns true when not in chorus-only view and current verse has a chorus (verse or chorus page)', () => {
+      expect(
+        shouldEnterChorusOnlyOnZero(null, 1, firstStanzaIndexByPage, isChorus)
+      ).toBe(true);
+    });
+
+    it('returns false when already in chorus-only view', () => {
+      expect(
+        shouldEnterChorusOnlyOnZero(1, 1, firstStanzaIndexByPage, isChorus)
+      ).toBe(false);
+    });
+
+    it('returns false when current verse has no chorus', () => {
+      const isChorusNoChorus = [false, false, false];
+      expect(
+        shouldEnterChorusOnlyOnZero(null, 1, firstStanzaIndexByPage, isChorusNoChorus)
+      ).toBe(false);
+    });
+
+    it('returns false when currentVerse is 0', () => {
+      expect(
+        shouldEnterChorusOnlyOnZero(null, 0, firstStanzaIndexByPage, isChorus)
+      ).toBe(false);
+    });
+
+    it('returns false when firstStanzaIndexByPage is empty', () => {
+      expect(shouldEnterChorusOnlyOnZero(null, 1, [], isChorus)).toBe(false);
+    });
+  });
+
   describe('getEffectiveLyricsView', () => {
     const displayPages = [['v1a', 'v1b'], ['c1a', 'c1b'], ['v2a']];
     const stanzaIndexByPage = [0, 1, 2];
@@ -225,6 +273,7 @@ describe('displayPages', () => {
         chorusStartLineIndexByPage,
         stanzas,
         isChorus,
+        languageCount: 1,
       });
       expect(view.lines).toEqual(['v1a', 'v1b']);
       expect(view.effectiveCurrentPage).toBe(0);
@@ -246,6 +295,7 @@ describe('displayPages', () => {
         chorusStartLineIndexByPage,
         stanzas,
         isChorus,
+        languageCount: 1,
       });
       expect(view.lines).toEqual(['c1a', 'c1b']);
       expect(view.effectiveCurrentPage).toBe(0);
@@ -269,10 +319,55 @@ describe('displayPages', () => {
         chorusStartLineIndexByPage: [-1, -1, -1, -1],
         stanzas: stanzasV2,
         isChorus: isChorusV2,
+        languageCount: 1,
       });
       expect(view.lines).toEqual(['c2']);
       expect(view.isChorusOnlyView).toBe(true);
       expect(view.displayVerseForIndicator).toBe(2);
+    });
+    it('limits chorus-only view to linesPerPage (8 for 2 languages)', () => {
+      const chorus12 = Array.from({ length: 12 }, (_, i) => `c${i}`);
+      const stanzasLongChorus = [['v1'], chorus12];
+      const isChorusLong = [false, true];
+      const view = getEffectiveLyricsView({
+        chorusOnlyForVerse: 1,
+        currentPage: 0,
+        currentVerse: 1,
+        displayPages: [['v1'], chorus12],
+        stanzaIndexByPage: [0, 1],
+        chorusStartLineIndexByPage: [-1, -1],
+        stanzas: stanzasLongChorus,
+        isChorus: isChorusLong,
+        languageCount: 2,
+      });
+      expect(view.isChorusOnlyView).toBe(true);
+      expect(view.lines).toHaveLength(8);
+      expect(view.lines).toEqual(chorus12.slice(0, 8));
+      expect(view.effectiveTotalPages).toBe(2);
+      expect(view.effectiveCurrentPage).toBe(0);
+    });
+
+    it('chorus-only view page 1 returns second page of lines', () => {
+      const chorus12 = Array.from({ length: 12 }, (_, i) => `c${i}`);
+      const stanzasLongChorus = [['v1'], chorus12];
+      const isChorusLong = [false, true];
+      const view = getEffectiveLyricsView({
+        chorusOnlyForVerse: 1,
+        chorusOnlyPage: 1,
+        currentPage: 0,
+        currentVerse: 1,
+        displayPages: [['v1'], chorus12],
+        stanzaIndexByPage: [0, 1],
+        chorusStartLineIndexByPage: [-1, -1],
+        stanzas: stanzasLongChorus,
+        isChorus: isChorusLong,
+        languageCount: 2,
+      });
+      expect(view.isChorusOnlyView).toBe(true);
+      expect(view.effectiveTotalPages).toBe(2);
+      expect(view.effectiveCurrentPage).toBe(1);
+      expect(view.lines).toHaveLength(4);
+      expect(view.lines).toEqual(chorus12.slice(8, 12));
     });
 
     it('returns normal view when chorusOnlyForVerse is set but song has no choruses', () => {
@@ -286,6 +381,7 @@ describe('displayPages', () => {
         chorusStartLineIndexByPage,
         stanzas,
         isChorus: isChorusNone,
+        languageCount: 1,
       });
       expect(view.lines).toEqual(['v1a', 'v1b']);
       expect(view.isChorusOnlyView).toBe(false);
@@ -301,6 +397,7 @@ describe('displayPages', () => {
         chorusStartLineIndexByPage,
         stanzas,
         isChorus,
+        languageCount: 1,
       });
       expect(view.lines).toEqual([]);
       expect(view.effectiveCurrentPage).toBe(10);

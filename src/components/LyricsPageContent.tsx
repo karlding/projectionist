@@ -63,6 +63,7 @@ export function LyricsPageContent({
   const pageLineCount = lines.length;
   const fontClass = LYRICS_FONT_SIZES[lyricsFontSizeIndex] ?? 'text-base';
   const chorusStartLineIndex = chorusStartLineIndexByPage[currentPage] ?? -1;
+  const nextPageChorusStartIndex = chorusStartLineIndexByPage[currentPage + 1] ?? -1;
 
   return (
     <div className={`text-gray-700 ${fontClass}`}>
@@ -76,7 +77,8 @@ export function LyricsPageContent({
           i,
           pageLineCount,
           chorusStartLineIndex,
-          suppressEndOfSong
+          suppressEndOfSong,
+          nextPageChorusStartIndex
         );
         return (
           <LineWithDecorations

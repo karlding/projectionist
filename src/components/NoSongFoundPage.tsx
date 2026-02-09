@@ -14,6 +14,8 @@ const emptyPayload = {
   chorusOnlyForVerse: null as number | null,
   currentVerse: 1,
   totalVerses: 0,
+  effectiveChorusOnlyTotalPages: 0,
+  effectiveChorusOnlyCurrentPage: 0,
 };
 
 export function NoSongFoundPage() {
